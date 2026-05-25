@@ -293,9 +293,10 @@ class ProductController extends Controller
             'available_colors'  => ['nullable', 'array'],
             'available_colors.*' => ['string', 'max:50'],
             'variants'               => ['nullable', 'array'],
-            'variants.*.value'       => ['required_with:variants', 'string', 'max:100'],
-            'variants.*.price'       => ['required_with:variants', 'numeric', 'min:0'],
-            'variants.*.image'       => ['nullable', 'image', 'max:20480'],
+            'variants.*.value'         => ['required_with:variants', 'string', 'max:100'],
+            'variants.*.price'         => ['required_with:variants', 'numeric', 'min:0'],
+            'variants.*.stock'         => ['nullable', 'integer', 'min:0'],
+            'variants.*.image'         => ['nullable', 'image', 'max:20480'],
             'variants.*.current_image' => ['nullable', 'string'],
         ]);
     }
@@ -315,6 +316,8 @@ class ProductController extends Controller
                 $variant['image'] = $raw ? $this->toRawPath($raw) : null;
             }
             unset($variant['current_image']);
+            // Normalise stock: store null when blank (unlimited)
+            $variant['stock'] = isset($variant['stock']) && $variant['stock'] !== '' ? (int) $variant['stock'] : null;
         }
         unset($variant);
         return $variants;

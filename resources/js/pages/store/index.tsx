@@ -3,7 +3,7 @@ import { Head, router } from '@inertiajs/react';
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { initSmoothScroll, animateHero, animateSectionsOnScroll, animatePDP, animateCollectionSidebar, killAllAnimations } from '@/lib/animations';
 
-interface ProductVariant { value: string; price: string; image: string | null }
+interface ProductVariant { value: string; price: string; stock: number | null; image: string | null }
 
 interface Product {
     id: number;
@@ -712,11 +712,16 @@ function CartDrawer({ open, onClose, lang, cart, setCart, products, navigate, on
     );
 
     function linePrice(l: CartItem & { product: Product }): number {
+        let base: number;
         if (l.variant) {
             const vp = l.product.variants?.find(v => v.value === l.variant)?.price;
-            if (vp) return Number(vp);
+            base = vp ? Number(vp) : Number(l.product.sale_price ?? l.product.price);
+        } else {
+            base = Number(l.product.sale_price ?? l.product.price);
         }
-        return Number(l.product.sale_price ?? l.product.price);
+        if (l.engraving && l.product.engraving_price) base += Number(l.product.engraving_price);
+        if (l.stitching && l.product.stitching_price) base += Number(l.product.stitching_price);
+        return base;
     }
 
     const subtotal = items.reduce((s, l) => s + linePrice(l) * l.qty, 0);
@@ -865,11 +870,16 @@ function CheckoutModal({ open, onClose, cart, setCart, products, lang }: {
     }).filter(Boolean) as (CartItem & { product: Product })[];
 
     function linePrice(l: CartItem & { product: Product }): number {
+        let base: number;
         if (l.variant) {
             const vp = l.product.variants?.find(v => v.value === l.variant)?.price;
-            if (vp) return Number(vp);
+            base = vp ? Number(vp) : Number(l.product.sale_price ?? l.product.price);
+        } else {
+            base = Number(l.product.sale_price ?? l.product.price);
         }
-        return Number(l.product.sale_price ?? l.product.price);
+        if (l.engraving && l.product.engraving_price) base += Number(l.product.engraving_price);
+        if (l.stitching && l.product.stitching_price) base += Number(l.product.stitching_price);
+        return base;
     }
 
     const subtotal = items.reduce((s, l) => s + linePrice(l) * l.qty, 0);
@@ -1491,13 +1501,18 @@ function ProductPage({ lang, productId, navigate, products, addToCart }: {
 
     const basePrice = Number(product.price);
     const baseSalePrice = product.sale_price ? Number(product.sale_price) : null;
-    const displayPrice = activeVariant
+    const baseDisplayPrice = activeVariant
         ? Number(activeVariant.price)
         : (baseSalePrice && baseSalePrice < basePrice ? baseSalePrice : basePrice);
+    const extrasPrice =
+        (engravingText.trim() && product.engraving_price ? Number(product.engraving_price) : 0) +
+        (stitchingText.trim() && product.stitching_price ? Number(product.stitching_price) : 0);
+    const displayPrice = baseDisplayPrice + extrasPrice;
     const showStrikethrough = !activeVariant && baseSalePrice && baseSalePrice < basePrice;
 
     const displayImage = activeVariant?.image ?? product.featured_image;
-    const inStock = product.stock_status === 'in_stock';
+    const variantOutOfStock = activeVariant !== null && activeVariant.stock !== null && activeVariant.stock <= 0;
+    const inStock = product.stock_status === 'in_stock' && !variantOutOfStock;
     const related = products.filter(p => p.id !== product.id && p.category === product.category).slice(0, 4);
 
     function handleAddToCart() {
@@ -1566,17 +1581,21 @@ function ProductPage({ lang, productId, navigate, products, addToCart }: {
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                                 {variants.map(v => {
                                     const sel = selectedVariant === v.value;
+                                    const oos = v.stock !== null && v.stock <= 0;
                                     return (
                                         <button
                                             key={v.value}
-                                            onClick={() => { setSelectedVariant(v.value); setVariantError(''); }}
+                                            onClick={() => { if (!oos) { setSelectedVariant(v.value); setVariantError(''); } }}
+                                            disabled={oos}
                                             style={{
                                                 padding: '7px 14px',
                                                 fontSize: 13,
                                                 border: sel ? '2px solid var(--ink)' : '1px solid var(--rule)',
                                                 background: sel ? 'var(--ink)' : 'var(--paper)',
-                                                color: sel ? 'var(--paper)' : 'var(--ink)',
-                                                cursor: 'pointer',
+                                                color: sel ? 'var(--paper)' : oos ? 'var(--ink-mute)' : 'var(--ink)',
+                                                cursor: oos ? 'not-allowed' : 'pointer',
+                                                opacity: oos ? 0.45 : 1,
+                                                textDecoration: oos ? 'line-through' : 'none',
                                                 borderRadius: 'var(--tbk-radius)',
                                                 transition: 'all 0.12s',
                                                 fontFamily: 'inherit',
@@ -1584,6 +1603,7 @@ function ProductPage({ lang, productId, navigate, products, addToCart }: {
                                         >
                                             {v.value}
                                             {v.price && <span style={{ marginInlineStart: 6, opacity: 0.7, fontSize: 12 }}>{fmt(v.price, cartT.currency)}</span>}
+                                            {oos && <span style={{ marginInlineStart: 4, fontSize: 11 }}>({lang === 'en' ? 'sold out' : 'نفد'})</span>}
                                         </button>
                                     );
                                 })}

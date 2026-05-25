@@ -38,8 +38,8 @@ class OrderController extends Controller
         foreach ($validated['items'] as $item) {
             $product = Product::findOrFail($item['product_id']);
 
-            // Resolve price: prefer variant price if a matching variant exists
-            $price = $product->sale_price ?? $product->price;
+            // Resolve base price: prefer variant price if a matching variant exists
+            $price = (float) ($product->sale_price ?? $product->price);
             if (!empty($item['variant']) && is_array($product->variants)) {
                 foreach ($product->variants as $v) {
                     if (($v['value'] ?? null) === $item['variant'] && isset($v['price'])) {
@@ -49,17 +49,24 @@ class OrderController extends Controller
                 }
             }
 
-            $total += $price * $item['quantity'];
-
+            // Add engraving / stitching surcharges to unit price
             $engravingText = null;
             if ($product->allows_engraving && !empty($item['engraving_text'])) {
                 $engravingText = trim($item['engraving_text']);
+                if ($product->engraving_price) {
+                    $price += (float) $product->engraving_price;
+                }
             }
 
             $stitchingText = null;
             if ($product->allows_stitching && !empty($item['stitching_text'])) {
                 $stitchingText = trim($item['stitching_text']);
+                if ($product->stitching_price) {
+                    $price += (float) $product->stitching_price;
+                }
             }
+
+            $total += $price * $item['quantity'];
 
             $orderItems[] = [
                 'product_id'      => $product->id,

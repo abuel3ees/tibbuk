@@ -6,6 +6,7 @@ import { ArrowLeft, Upload, X, Plus, List, ChevronDown, ChevronUp } from 'lucide
 interface Variant {
     value: string;
     price: string;
+    stock: string;
     image: File | null;
     current_image: string | null;
 }
@@ -13,6 +14,7 @@ interface Variant {
 interface StoredVariant {
     value: string;
     price: string;
+    stock: string | null;
     image: string | null;
 }
 
@@ -48,7 +50,7 @@ interface Props {
 }
 
 function toFormVariant(sv: StoredVariant): Variant {
-    return { value: sv.value ?? '', price: sv.price ?? '', image: null, current_image: sv.image ?? null };
+    return { value: sv.value ?? '', price: sv.price ?? '', stock: sv.stock ?? '', image: null, current_image: sv.image ?? null };
 }
 
 const defaultValues = {
@@ -75,6 +77,8 @@ const defaultValues = {
     available_colors: [] as string[],
     variants: [] as Variant[],
 };
+
+
 
 export default function ProductForm({ product, categories }: Props) {
     const isEdit = !!product;
@@ -135,12 +139,12 @@ export default function ProductForm({ product, categories }: Props) {
     );
 
     function addVariant() {
-        setData('variants', [...data.variants, { value: '', price: '', image: null, current_image: null }]);
+        setData('variants', [...data.variants, { value: '', price: '', stock: '', image: null, current_image: null }]);
     }
     function removeVariant(i: number) {
         setData('variants', data.variants.filter((_, idx) => idx !== i));
     }
-    function setVariantText(i: number, field: 'value' | 'price', val: string) {
+    function setVariantText(i: number, field: 'value' | 'price' | 'stock', val: string) {
         setData('variants', data.variants.map((v, idx) => idx === i ? { ...v, [field]: val } : v));
     }
     function setVariantImage(i: number, file: File) {
@@ -623,7 +627,7 @@ function VariantRow({ v, i, errors, onRemove, onText, onImage, onClearImage }: {
     i: number;
     errors: Record<string, string>;
     onRemove: () => void;
-    onText: (field: 'value' | 'price', val: string) => void;
+    onText: (field: 'value' | 'price' | 'stock', val: string) => void;
     onImage: (file: File) => void;
     onClearImage: () => void;
 }) {
@@ -676,7 +680,7 @@ function VariantRow({ v, i, errors, onRemove, onText, onImage, onClearImage }: {
                 </div>
 
                 {/* Fields */}
-                <div className="flex-1 grid grid-cols-2 gap-3">
+                <div className="flex-1 grid grid-cols-3 gap-3">
                     <Field label="Label *" error={errors[`variants.${i}.value`]}>
                         <input
                             value={v.value}
@@ -694,6 +698,16 @@ function VariantRow({ v, i, errors, onRemove, onText, onImage, onClearImage }: {
                             onChange={e => onText('price', e.target.value)}
                             className={inputClass}
                             placeholder="0.00"
+                        />
+                    </Field>
+                    <Field label="Stock" error={errors[`variants.${i}.stock`]}>
+                        <input
+                            type="number"
+                            min="0"
+                            value={v.stock}
+                            onChange={e => onText('stock', e.target.value)}
+                            className={inputClass}
+                            placeholder="∞ unlimited"
                         />
                     </Field>
                 </div>
@@ -716,7 +730,7 @@ function VariantsSection({ variants, errors, onAdd, onRemove, onText, onImage, o
     errors: Record<string, string>;
     onAdd: () => void;
     onRemove: (i: number) => void;
-    onText: (i: number, field: 'value' | 'price', val: string) => void;
+    onText: (i: number, field: 'value' | 'price' | 'stock', val: string) => void;
     onImage: (i: number, file: File) => void;
     onClearImage: (i: number) => void;
     onBulkAdd: (variants: Variant[]) => void;
@@ -737,7 +751,7 @@ function VariantsSection({ variants, errors, onAdd, onRemove, onText, onImage, o
                 const maybePx = line.slice(comma + 1).trim();
                 if (/^\d/.test(maybePx)) { value = line.slice(0, comma).trim(); price = maybePx; }
             }
-            if (value) parsed.push({ value, price, image: null, current_image: null });
+            if (value) parsed.push({ value, price, stock: '', image: null, current_image: null });
         }
         if (parsed.length) { onBulkAdd(parsed); setBulkText(''); setBulkPrice(''); setBulkOpen(false); }
     }

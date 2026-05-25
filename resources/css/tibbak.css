@@ -650,22 +650,29 @@ html.tibbak[dir="rtl"] .tbk .drawer { transform: translateX(-100%); }
 .tbk .cart-empty p { color: var(--ink-mute); margin: 0 0 20px; font-size: 14px; }
 
 /* ----- checkout modal ----- */
-.tbk .checkout-overlay {
-  position: fixed; inset: 0; background: rgba(22,32,29,0.5);
-  z-index: 200; overflow-y: auto; padding: 32px 20px;
+.checkout-overlay {
+  position: fixed;
+  top: 0; left: 0; width: 100vw; height: 100vh;
+  background: rgba(22,32,29,0.6);
+  z-index: 9999;
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+  box-sizing: border-box;
 }
-.tbk .checkout-modal {
-  background: var(--paper); width: 100%; max-width: 540px; margin: 0 auto;
-  border-radius: var(--tbk-radius-lg);
-  box-shadow: 0 24px 64px rgba(22,32,29,0.2);
+.checkout-modal {
+  background: var(--paper, #fff); width: 100%; max-width: 540px;
+  max-height: calc(100vh - 40px);
+  display: flex; flex-direction: column;
+  border-radius: 16px;
+  box-shadow: 0 24px 64px rgba(22,32,29,0.3);
+  position: relative; z-index: 1;
 }
-.tbk .checkout-modal__head {
+.checkout-modal__head {
   display: flex; justify-content: space-between; align-items: center;
-  padding: 20px 28px; border-bottom: 1px solid var(--rule);
-  position: sticky; top: 0; background: var(--paper); z-index: 1;
+  padding: 20px 28px; border-bottom: 1px solid var(--rule, #e5e7eb);
+  flex-shrink: 0;
 }
-.tbk .checkout-modal__head h2 { font-size: 18px; font-weight: 600; margin: 0; color: var(--ink); }
-.tbk .checkout-modal__body { padding: 28px; }
+.checkout-modal__head h2 { font-size: 18px; font-weight: 600; margin: 0; color: var(--ink, #111); }
+.checkout-modal__body { padding: 28px; overflow-y: auto; flex: 1; min-height: 0; }
 .tbk .form-field { margin-bottom: 20px; }
 .tbk .form-field label { display: block; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-mute); margin-bottom: 8px; }
 .tbk .form-field input, .tbk .form-field textarea {

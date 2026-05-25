@@ -896,6 +896,12 @@ function CheckoutModal({ open, onClose, cart, setCart, products, lang }: {
         });
     }
 
+    useEffect(() => {
+        if (!open) return;
+        document.documentElement.style.overflow = 'hidden';
+        return () => { document.documentElement.style.overflow = ''; };
+    }, [open]);
+
     if (!open) return null;
 
     return (

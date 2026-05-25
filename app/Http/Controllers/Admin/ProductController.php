@@ -104,14 +104,16 @@ class ProductController extends Controller
         }
 
         $variants = $validated['variants'] ?? [];
-        $existing = $product->getRawOriginal('variants') ? json_decode($product->getRawOriginal('variants'), true) : [];
+        $rawVariants = $product->getRawOriginal('variants');
+        $existing = $rawVariants ? (json_decode($rawVariants, true) ?? []) : [];
+
         $imageCount = $this->countVariantImages($request, $variants);
 
         if ($imageCount >= 2) {
             // Delete old images for slots being replaced before queuing
             foreach (array_keys($variants) as $i) {
                 if ($request->hasFile("variants.{$i}.image")) {
-                    $oldImage = $existing[$i]['image'] ?? null;
+                    $oldImage = isset($existing[$i]) ? ($existing[$i]['image'] ?? null) : null;
                     if ($oldImage && !str_starts_with($oldImage, 'http')) {
                         Storage::disk('public')->delete($oldImage);
                     }
@@ -334,7 +336,8 @@ class ProductController extends Controller
                 $variant['image'] = $temp;
                 $pending[$i] = $temp;
             } else {
-                $raw = $variant['current_image'] ?? ($existing[$i]['image'] ?? null);
+                $existingImage = isset($existing[$i]) ? ($existing[$i]['image'] ?? null) : null;
+                $raw = $variant['current_image'] ?? $existingImage;
                 $variant['image'] = $raw ? $this->toRawPath($raw) : null;
             }
             unset($variant['current_image']);
@@ -348,7 +351,7 @@ class ProductController extends Controller
         foreach ($variants as $i => &$variant) {
             if ($request->hasFile("variants.{$i}.image")) {
                 // Delete old variant image if stored locally
-                $oldImage = $existing[$i]['image'] ?? null;
+                $oldImage = isset($existing[$i]) ? ($existing[$i]['image'] ?? null) : null;
                 if ($oldImage && !str_starts_with($oldImage, 'http')) {
                     Storage::disk('public')->delete($oldImage);
                 }
@@ -357,7 +360,8 @@ class ProductController extends Controller
                 // The form sends back current_image which may already be a /storage/ URL
                 // (because the model accessor transforms raw paths to URLs for the frontend).
                 // Strip the prefix so we always store a raw relative path in the DB.
-                $raw = $variant['current_image'] ?? ($existing[$i]['image'] ?? null);
+                $existingImage = isset($existing[$i]) ? ($existing[$i]['image'] ?? null) : null;
+                $raw = $variant['current_image'] ?? $existingImage;
                 $variant['image'] = $raw ? $this->toRawPath($raw) : null;
             }
             unset($variant['current_image']);

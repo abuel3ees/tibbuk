@@ -32,11 +32,18 @@ interface Notification {
     read_at: string | null;
 }
 
+interface HeroContent {
+    pill_en: string | null; pill_ar: string | null;
+    title_en: string | null; title_ar: string | null;
+    lede_en: string | null; lede_ar: string | null;
+}
+
 interface Props {
     stats: Stats;
     financials: Financials;
     recentOrders: Order[];
     hero_image: string | null;
+    hero_content: HeroContent;
 }
 
 const statusColors: Record<string, string> = {
@@ -46,7 +53,7 @@ const statusColors: Record<string, string> = {
     cancelled: 'bg-red-50 text-red-700 border-red-200',
 };
 
-export default function Dashboard({ stats, financials, recentOrders, hero_image }: Props) {
+export default function Dashboard({ stats, financials, recentOrders, hero_image, hero_content }: Props) {
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [notifOpen, setNotifOpen] = useState(false);
     const [unreadCount, setUnreadCount] = useState(0);
@@ -158,6 +165,9 @@ export default function Dashboard({ stats, financials, recentOrders, hero_image 
             {/* Hero image */}
             <HeroImageCard current={hero_image} />
 
+            {/* Hero content */}
+            <HeroContentCard content={hero_content} />
+
             {/* Notifications panel */}
             {notifOpen && (
                 <div className="fixed inset-0 z-50 flex">
@@ -262,6 +272,75 @@ function HeroImageCard({ current }: { current: string | null }) {
                 </div>
             </div>
         </div>
+    );
+}
+
+function HeroContentCard({ content }: { content: HeroContent }) {
+    const { data, setData, post, processing } = useForm({
+        pill_en:  content.pill_en  ?? '',
+        pill_ar:  content.pill_ar  ?? '',
+        title_en: content.title_en ?? '',
+        title_ar: content.title_ar ?? '',
+        lede_en:  content.lede_en  ?? '',
+        lede_ar:  content.lede_ar  ?? '',
+    });
+
+    function handleSubmit(e: React.FormEvent) {
+        e.preventDefault();
+        post('/admin/settings/hero-content');
+    }
+
+    const field = (label: string, key: keyof typeof data, rows = 1) => (
+        <div>
+            <label className="block text-xs text-stone-400 mb-1">{label}</label>
+            {rows > 1 ? (
+                <textarea
+                    rows={rows}
+                    value={data[key]}
+                    onChange={e => setData(key, e.target.value)}
+                    className="w-full border border-stone-200 px-3 py-2 text-sm text-stone-900 focus:outline-none focus:border-stone-500 resize-none"
+                />
+            ) : (
+                <input
+                    type="text"
+                    value={data[key]}
+                    onChange={e => setData(key, e.target.value)}
+                    className="w-full border border-stone-200 px-3 py-2 text-sm text-stone-900 focus:outline-none focus:border-stone-500"
+                />
+            )}
+        </div>
+    );
+
+    return (
+        <form onSubmit={handleSubmit} className="bg-white border border-stone-100 mt-6">
+            <div className="px-8 py-6 border-b border-stone-100">
+                <h2 className="text-sm font-medium text-stone-900">Hero Text</h2>
+                <p className="text-xs text-stone-400 mt-0.5">Leave blank to use the default copy. Title overrides the full heading.</p>
+            </div>
+            <div className="px-8 py-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                    <p className="text-xs font-semibold tracking-widest uppercase text-stone-400">English</p>
+                    {field('Pill / badge', 'pill_en')}
+                    {field('Title (overrides default)', 'title_en')}
+                    {field('Lede / subtitle', 'lede_en', 3)}
+                </div>
+                <div className="space-y-4">
+                    <p className="text-xs font-semibold tracking-widest uppercase text-stone-400">Arabic / عربي</p>
+                    {field('Pill / badge', 'pill_ar')}
+                    {field('Title (overrides default)', 'title_ar')}
+                    {field('Lede / subtitle', 'lede_ar', 3)}
+                </div>
+            </div>
+            <div className="px-8 pb-6">
+                <button
+                    type="submit"
+                    disabled={processing}
+                    className="bg-stone-900 text-white px-8 py-2.5 text-xs tracking-widest uppercase hover:bg-stone-700 transition-colors disabled:opacity-40"
+                >
+                    {processing ? 'Saving…' : 'Save Text'}
+                </button>
+            </div>
+        </form>
     );
 }
 

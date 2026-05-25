@@ -17,6 +17,7 @@ interface Order {
     customer_name: string;
     customer_phone: string;
     customer_email: string | null;
+    customer_facebook: string | null;
     delivery_address: string;
     status: string;
     notes: string | null;
@@ -86,6 +87,11 @@ export default function OrderShow({ order }: Props) {
                     <p className="font-medium text-stone-900">{order.customer_name}</p>
                     <p className="text-sm text-stone-500 mt-1">{order.customer_phone}</p>
                     {order.customer_email && <p className="text-sm text-stone-500">{order.customer_email}</p>}
+                    {order.customer_facebook && (
+                        <a href={order.customer_facebook} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline">
+                            {order.customer_facebook}
+                        </a>
+                    )}
                     <div className="mt-4 pt-4 border-t border-stone-50">
                         <p className="text-xs tracking-widest uppercase text-stone-400 mb-1">Delivery Address</p>
                         <p className="text-sm text-stone-600 leading-relaxed">{order.delivery_address}</p>

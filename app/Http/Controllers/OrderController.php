@@ -17,8 +17,9 @@ class OrderController extends Controller
         $validated = $request->validate([
             'customer_name'    => ['required', 'string', 'max:255'],
             'customer_phone'   => ['required', 'string', 'regex:/^(\+?962|0)7[789]\d{7}$/'],
-            'customer_email'   => ['nullable', 'email', 'max:255'],
-            'delivery_address' => ['required', 'string', 'max:500'],
+            'customer_email'    => ['nullable', 'email', 'max:255'],
+            'customer_facebook' => ['nullable', 'string', 'max:500'],
+            'delivery_address'  => ['required', 'string', 'max:500'],
             'notes'            => ['nullable', 'string', 'max:1000'],
             'items'                   => ['required', 'array', 'min:1'],
             'items.*.product_id'      => ['required', 'exists:products,id'],
@@ -64,7 +65,8 @@ class OrderController extends Controller
         $order = Order::create([
             'customer_name'    => $validated['customer_name'],
             'customer_phone'   => $validated['customer_phone'],
-            'customer_email'   => $validated['customer_email'] ?? null,
+            'customer_email'    => $validated['customer_email'] ?? null,
+            'customer_facebook' => $validated['customer_facebook'] ?? null,
             'delivery_address' => $validated['delivery_address'],
             'notes'            => $validated['notes'] ?? null,
             'total_amount'     => $total,

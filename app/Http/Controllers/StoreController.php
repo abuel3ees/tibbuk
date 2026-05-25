@@ -21,7 +21,8 @@ class StoreController extends Controller
         return Inertia::render('store/index', [
             'products'    => $products,
             'categories'  => $categories,
-            'hero_image'  => Setting::heroImageUrl(),
+            'hero_image'   => Setting::heroImageUrl(),
+            'hero_content' => Setting::heroContent(),
         ]);
     }
 

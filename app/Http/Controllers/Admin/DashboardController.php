@@ -49,6 +49,7 @@ class DashboardController extends Controller
             'financials'   => $financials,
             'recentOrders' => $recentOrders,
             'hero_image'   => Setting::heroImageUrl(),
+            'hero_content' => Setting::heroContent(),
         ]);
     }
 }

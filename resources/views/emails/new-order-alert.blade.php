@@ -44,6 +44,11 @@
         <h3 style="font-size:12px; text-transform:uppercase; letter-spacing:0.1em; color:#888; margin-bottom:8px;">Customer</h3>
         <p style="margin:0 0 4px; font-size:15px; font-weight:600;">{{ $order->customer_name }}</p>
         <p style="margin:0 0 4px; font-size:14px; color:#555;">{{ $order->customer_phone }}</p>
+        @if($order->customer_facebook)
+            <p style="margin:0 0 4px; font-size:14px;">
+                <a href="{{ $order->customer_facebook }}" style="color:#1877f2;">{{ $order->customer_facebook }}</a>
+            </p>
+        @endif
         <p style="margin:0 0 24px; font-size:14px; color:#555;">{{ $order->delivery_address }}</p>
 
         <h3 style="font-size:12px; text-transform:uppercase; letter-spacing:0.1em; color:#888; margin-bottom:8px;">Items</h3>

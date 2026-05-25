@@ -1,6 +1,7 @@
 import '../../../css/tibbak.css';
 import { Head, router } from '@inertiajs/react';
 import { useState, useEffect, useMemo, useRef } from 'react';
+import { initSmoothScroll, animateHero, animateSectionsOnScroll, animatePDP, animateCollectionSidebar, killAllAnimations } from '@/lib/animations';
 
 interface ProductVariant { value: string; price: string; image: string | null }
 
@@ -130,11 +131,13 @@ const COPY = {
             name: 'Full Name *',
             phone: 'Phone Number *',
             email: 'Email Address',
+            facebook: 'Facebook Profile URL',
             address: 'Delivery Address *',
             notes: 'Order Notes',
             namePlaceholder: 'Your full name',
             phonePlaceholder: '07XXXXXXXX or +96279XXXXXXX',
             emailPlaceholder: 'Optional',
+            facebookPlaceholder: 'facebook.com/your.name — optional',
             addressPlaceholder: 'Full delivery address in Jordan',
             notesPlaceholder: 'Any special requests…',
             summary: 'Order Summary',
@@ -251,11 +254,13 @@ const COPY = {
             name: 'الاسم الكامل *',
             phone: 'رقم الهاتف *',
             email: 'البريد الإلكتروني',
+            facebook: 'رابط حساب فيسبوك',
             address: 'عنوان التوصيل *',
             notes: 'ملاحظات الطلب',
             namePlaceholder: 'اسمك الكامل',
             phonePlaceholder: '07XXXXXXXX',
             emailPlaceholder: 'اختياري',
+            facebookPlaceholder: 'facebook.com/your.name — اختياري',
             addressPlaceholder: 'عنوان التوصيل الكامل في الأردنّ',
             notesPlaceholder: 'أيّ طلبات خاصّة…',
             summary: 'ملخّص الطلب',
@@ -292,12 +297,13 @@ const BUNDLE = {
     ],
 };
 
-const CATEGORIES_DESIGN = [
-    { id: 'stethoscopes', name: { en: 'Stethoscopes',   ar: 'السمّاعات' },        count: 6,  icon: 'steth' },
-    { id: 'diagnostics',  name: { en: 'Diagnostics',    ar: 'أدوات التشخيص' },   count: 18, icon: 'diag'  },
-    { id: 'apparel',      name: { en: 'Coats & Scrubs', ar: 'المعاطف والسكرَب' }, count: 12, icon: 'coat'  },
-    { id: 'kits',         name: { en: 'Practice Kits',  ar: 'أطقم التدريب' },    count: 8,  icon: 'kit'   },
-];
+// Icon hints for known category names — add more as needed
+const CAT_ICON_MAP: Record<string, string> = {
+    stethoscope: 'steth', stethoscopes: 'steth', سمّاعات: 'steth',
+    diagnostic: 'diag', diagnostics: 'diag', تشخيص: 'diag',
+    apparel: 'coat', coat: 'coat', scrub: 'coat', coats: 'coat', سكرَب: 'coat', معاطف: 'coat',
+    kit: 'kit', kits: 'kit', أطقم: 'kit',
+};
 
 // ---- ICONS ----
 function ArrowIcon() {
@@ -805,6 +811,7 @@ function CheckoutModal({ open, onClose, cart, products, lang }: {
         customer_name: '',
         customer_phone: '',
         customer_email: '',
+        customer_facebook: '',
         delivery_address: '',
         notes: '',
     });
@@ -856,7 +863,7 @@ function CheckoutModal({ open, onClose, cart, products, lang }: {
             })),
         }, {
             onError: (serverErrs) => { setErrors(serverErrs); setSubmitting(false); },
-            onSuccess: () => { setForm({ customer_name: '', customer_phone: '', customer_email: '', delivery_address: '', notes: '' }); setEngravingTexts({}); },
+            onSuccess: () => { setForm({ customer_name: '', customer_phone: '', customer_email: '', customer_facebook: '', delivery_address: '', notes: '' }); setEngravingTexts({}); },
         });
     }
 
@@ -872,9 +879,10 @@ function CheckoutModal({ open, onClose, cart, products, lang }: {
                 <div className="checkout-modal__body">
                     <form onSubmit={handleSubmit}>
                         {[
-                            { key: 'customer_name',    label: t.name,    placeholder: t.namePlaceholder,    type: 'text' },
-                            { key: 'customer_phone',   label: t.phone,   placeholder: t.phonePlaceholder,   type: 'tel' },
-                            { key: 'customer_email',   label: t.email,   placeholder: t.emailPlaceholder,   type: 'email' },
+                            { key: 'customer_name',     label: t.name,     placeholder: t.namePlaceholder,     type: 'text' },
+                            { key: 'customer_phone',    label: t.phone,    placeholder: t.phonePlaceholder,    type: 'tel' },
+                            { key: 'customer_email',    label: t.email,    placeholder: t.emailPlaceholder,    type: 'email' },
+                            { key: 'customer_facebook', label: t.facebook, placeholder: t.facebookPlaceholder, type: 'url' },
                         ].map(({ key, label, placeholder, type }) => (
                             <div className="form-field" key={key}>
                                 <label>{label}</label>
@@ -973,15 +981,30 @@ function Toast({ message, on }: { message: string; on: boolean }) {
 }
 
 // ---- HOME PAGE ----
-function HomePage({ lang, navigate, products, addToCart, heroImage }: {
+function HomePage({ lang, navigate, products, addToCart, heroImage, heroContent }: {
     lang: Lang;
     navigate: (r: string, pid?: number | null, cat?: string | null) => void;
     products: Product[];
     addToCart: (id: number, variant?: string | null) => void;
     heroImage: string | null;
+    heroContent: HeroContent;
 }) {
     const t = COPY[lang];
+    const pill  = lang === 'en' ? (heroContent.pill_en  || t.hero.pill)  : (heroContent.pill_ar  || t.hero.pill);
+    const title = lang === 'en' ? (heroContent.title_en || null)          : (heroContent.title_ar || null);
+    const lede  = lang === 'en' ? (heroContent.lede_en  || t.hero.lede)  : (heroContent.lede_ar  || t.hero.lede);
     const featured = products.slice(0, 8);
+
+    const dynamicCats = useMemo(() => {
+        const map = new Map<string, number>();
+        for (const p of products) {
+            if (p.category) map.set(p.category, (map.get(p.category) ?? 0) + 1);
+        }
+        return Array.from(map.entries()).map(([name, count]) => {
+            const key = Object.keys(CAT_ICON_MAP).find(k => name.toLowerCase().includes(k.toLowerCase())) ?? '';
+            return { name, count, icon: CAT_ICON_MAP[key] ?? 'diag' };
+        });
+    }, [products]);
 
     return (
         <>
@@ -989,11 +1012,13 @@ function HomePage({ lang, navigate, products, addToCart, heroImage }: {
                 <div className="wrap">
                     <div className="hero__grid">
                         <div className="hero__copy">
-                            <span className="pill"><span className="dot" />{t.hero.pill}</span>
+                            <span className="pill"><span className="dot" />{pill}</span>
                             <h1 className="h1">
-                                {t.hero.title_a}<em>{t.hero.title_em}</em>{t.hero.title_b}
+                                {title
+                                    ? title
+                                    : <>{t.hero.title_a}<em>{t.hero.title_em}</em>{t.hero.title_b}</>}
                             </h1>
-                            <p className="body-lg hero__lede">{t.hero.lede}</p>
+                            <p className="body-lg hero__lede">{lede}</p>
                             <div className="hero__cta">
                                 <button className="btn btn--lg" onClick={() => navigate('collection')}>
                                     {t.hero.cta_primary} <span className="arrow"><ArrowIcon /></span>
@@ -1009,7 +1034,7 @@ function HomePage({ lang, navigate, products, addToCart, heroImage }: {
                             </div>
                         </div>
                         <div className="hero__media">
-                            <img src={heroImage ?? '/assets/hero.png'} alt={t.hero.title_a + t.hero.title_em + t.hero.title_b} />
+                            {heroImage && <img src={heroImage} alt={t.hero.title_a + t.hero.title_em + t.hero.title_b} />}
                         </div>
                     </div>
                 </div>
@@ -1027,12 +1052,12 @@ function HomePage({ lang, navigate, products, addToCart, heroImage }: {
                         </button>
                     </div>
                     <div className="cats">
-                        {CATEGORIES_DESIGN.map(c => (
-                            <button key={c.id} className="cat" onClick={() => navigate('collection', null, c.id)}>
+                        {dynamicCats.map(c => (
+                            <button key={c.name} className="cat" onClick={() => navigate('collection', null, c.name)}>
                                 <div className="cat__icon"><CatIconComp kind={c.icon} /></div>
                                 <div>
                                     <div className="cat__count">{c.count} {lang === 'en' ? 'items' : 'منتج'}</div>
-                                    <h3 className="cat__name">{c.name[lang]}</h3>
+                                    <h3 className="cat__name">{c.name}</h3>
                                 </div>
                                 <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                                     <div className="cat__arrow"><ArrowIcon /></div>
@@ -1174,74 +1199,83 @@ function CollectionPage({ lang, products, navigate, addToCart, initialCat }: {
                     </div>
                 </div>
             </section>
-            <section className="section" style={{ paddingTop: 24 }}>
+            <section className="section" style={{ paddingTop: 0 }}>
                 <div className="wrap">
-                    <div className="col-tools">
-                        <div className="col-tools__filters">
-                            <button className={!filter ? 'on' : ''} onClick={() => setFilter(null)} aria-pressed={!filter}>
-                                {allLabel}
-                            </button>
-                            {allCategories.map(cat => (
-                                <button key={cat} className={filter === cat ? 'on' : ''} onClick={() => setFilter(cat)} aria-pressed={filter === cat}>
-                                    {cat}
-                                </button>
-                            ))}
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--ink-mute)', cursor: 'pointer', userSelect: 'none' }}>
-                                <input
-                                    type="checkbox"
-                                    checked={inStockOnly}
-                                    onChange={e => setInStockOnly(e.target.checked)}
-                                    style={{ accentColor: 'var(--ink)', width: 14, height: 14 }}
-                                />
-                                {lang === 'en' ? 'In stock only' : 'المتوفّر فقط'}
-                            </label>
-                            <select
-                                value={sort}
-                                onChange={e => setSort(e.target.value as typeof sort)}
-                                style={{ border: '1px solid var(--rule)', background: 'var(--paper)', color: 'var(--ink)', fontSize: 13, padding: '6px 10px', borderRadius: 4, cursor: 'pointer' }}
-                            >
-                                {(Object.keys(sortLabels) as (keyof typeof sortLabels)[]).map(k => (
-                                    <option key={k} value={k}>{sortLabels[k]}</option>
-                                ))}
-                            </select>
-                            <div className="col-tools__count">
-                                <span className="num">{filtered.length}</span> {t.count}
+                    <div className="col-layout">
+                        {/* Sticky sidebar */}
+                        <aside className="col-sidebar">
+                            <div className="col-sidebar__section">
+                                <div className="col-sidebar__label">{lang === 'en' ? 'Category' : 'الفئة'}</div>
+                                <div className="col-sidebar__filters">
+                                    <button className={!filter ? 'on' : ''} onClick={() => setFilter(null)} aria-pressed={!filter}>
+                                        {allLabel}
+                                    </button>
+                                    {allCategories.map(cat => (
+                                        <button key={cat} className={filter === cat ? 'on' : ''} onClick={() => setFilter(cat)} aria-pressed={filter === cat}>
+                                            {cat}
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
-                        </div>
-                    </div>
-                    <div style={{ position: 'relative', marginBottom: 28 }}>
-                        <div style={{ position: 'absolute', insetInlineStart: 16, top: '50%', transform: 'translateY(-50%)', color: 'var(--ink-mute)', pointerEvents: 'none' }}>
-                            <SearchIcon />
-                        </div>
-                        <input
-                            type="search"
-                            value={search}
-                            onChange={e => setSearch(e.target.value)}
-                            placeholder={lang === 'en' ? 'Search products…' : 'ابحث عن منتج…'}
-                            style={{
-                                width: '100%',
-                                padding: '14px 44px',
-                                border: '1px solid var(--rule)',
-                                borderRadius: 6,
-                                background: 'var(--paper)',
-                                color: 'var(--ink)',
-                                fontSize: 15,
-                                outline: 'none',
-                                boxSizing: 'border-box',
-                            }}
-                        />
-                        {search && (
-                            <button
-                                onClick={() => setSearch('')}
-                                aria-label="Clear search"
-                                style={{ position: 'absolute', insetInlineEnd: 14, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ink-mute)', display: 'flex', alignItems: 'center' }}
-                            >
-                                <CloseIcon />
-                            </button>
-                        )}
-                    </div>
+                            <div className="col-sidebar__section">
+                                <div className="col-sidebar__label">{lang === 'en' ? 'Sort' : 'الترتيب'}</div>
+                                <div className="col-sidebar__filters">
+                                    {(Object.keys(sortLabels) as (keyof typeof sortLabels)[]).map(k => (
+                                        <button key={k} className={sort === k ? 'on' : ''} onClick={() => setSort(k)}>
+                                            {sortLabels[k]}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                            <div className="col-sidebar__section">
+                                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--ink-soft)', cursor: 'pointer', userSelect: 'none' }}>
+                                    <input
+                                        type="checkbox"
+                                        checked={inStockOnly}
+                                        onChange={e => setInStockOnly(e.target.checked)}
+                                        style={{ accentColor: 'var(--ink)', width: 14, height: 14 }}
+                                    />
+                                    {lang === 'en' ? 'In stock only' : 'المتوفّر فقط'}
+                                </label>
+                                <div className="col-sidebar__count">
+                                    <span className="num">{filtered.length}</span> {t.count}
+                                </div>
+                            </div>
+                        </aside>
+
+                        {/* Main content */}
+                        <div className="col-main">
+                            <div style={{ position: 'relative', marginBottom: 24 }}>
+                                <div style={{ position: 'absolute', insetInlineStart: 16, top: '50%', transform: 'translateY(-50%)', color: 'var(--ink-mute)', pointerEvents: 'none' }}>
+                                    <SearchIcon />
+                                </div>
+                                <input
+                                    type="search"
+                                    value={search}
+                                    onChange={e => setSearch(e.target.value)}
+                                    placeholder={lang === 'en' ? 'Search products…' : 'ابحث عن منتج…'}
+                                    style={{
+                                        width: '100%',
+                                        padding: '12px 44px',
+                                        border: '1px solid var(--rule)',
+                                        borderRadius: 6,
+                                        background: 'var(--paper)',
+                                        color: 'var(--ink)',
+                                        fontSize: 15,
+                                        outline: 'none',
+                                        boxSizing: 'border-box',
+                                    }}
+                                />
+                                {search && (
+                                    <button
+                                        onClick={() => setSearch('')}
+                                        aria-label="Clear search"
+                                        style={{ position: 'absolute', insetInlineEnd: 14, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ink-mute)', display: 'flex', alignItems: 'center' }}
+                                    >
+                                        <CloseIcon />
+                                    </button>
+                                )}
+                            </div>
                     <div className="col-grid">
                         {filtered.length > 0
                             ? filtered.map(p => (
@@ -1254,7 +1288,9 @@ function CollectionPage({ lang, products, navigate, addToCart, initialCat }: {
                             )
                         }
                     </div>
-                </div>
+                        </div>{/* /col-main */}
+                    </div>{/* /col-layout */}
+                </div>{/* /wrap */}
             </section>
         </>
     );
@@ -1620,13 +1656,20 @@ function HowPage({ lang, navigate }: { lang: Lang; navigate: (r: string) => void
 }
 
 // ---- MAIN COMPONENT ----
+interface HeroContent {
+    pill_en: string | null; pill_ar: string | null;
+    title_en: string | null; title_ar: string | null;
+    lede_en: string | null; lede_ar: string | null;
+}
+
 interface Props {
     products: Product[];
     categories: string[];
     hero_image: string | null;
+    hero_content: HeroContent;
 }
 
-export default function StoreIndex({ products, hero_image }: Props) {
+export default function StoreIndex({ products, hero_image, hero_content }: Props) {
     const [lang, setLang] = useState<Lang>('en');
     const [route, setRoute] = useState('home');
     const [productId, setProductId] = useState<number | null>(null);
@@ -1638,6 +1681,7 @@ export default function StoreIndex({ products, hero_image }: Props) {
 
     useEffect(() => {
         document.documentElement.classList.add('tibbak');
+        initSmoothScroll();
         return () => document.documentElement.classList.remove('tibbak');
     }, []);
 
@@ -1645,6 +1689,23 @@ export default function StoreIndex({ products, hero_image }: Props) {
         document.documentElement.lang = lang;
         document.documentElement.dir = COPY[lang].dir;
     }, [lang]);
+
+    useEffect(() => {
+        killAllAnimations();
+        // Delay one frame so DOM is painted before animating
+        const id = requestAnimationFrame(() => {
+            if (route === 'home') {
+                animateHero('.tbk .hero');
+                animateSectionsOnScroll();
+            } else if (route === 'collection') {
+                animateCollectionSidebar();
+                animateSectionsOnScroll();
+            } else if (route === 'product') {
+                animatePDP();
+            }
+        });
+        return () => cancelAnimationFrame(id);
+    }, [route, productId]);
 
     function navigate(r: string, pid?: number | null, cat?: string | null) {
         setRoute(r);
@@ -1687,7 +1748,7 @@ export default function StoreIndex({ products, hero_image }: Props) {
             <MetaStrip t={COPY[lang]} />
             <Header lang={lang} setLang={setLang} route={route} navigate={navigate} cartCount={cartCount} openCart={() => setCartOpen(true)} openSearch={() => setSearchOpen(true)} />
             <main id="main">
-                {route === 'home' && <HomePage lang={lang} navigate={navigate} products={products} addToCart={addToCart} heroImage={hero_image} />}
+                {route === 'home' && <HomePage lang={lang} navigate={navigate} products={products} addToCart={addToCart} heroImage={hero_image} heroContent={hero_content} />}
                 {route === 'collection' && <CollectionPage lang={lang} products={products} navigate={navigate} addToCart={addToCart} initialCat={initialCat} />}
                 {route === 'product' && productId !== null && <ProductPage lang={lang} productId={productId} navigate={navigate} products={products} addToCart={addToCart} />}
                 {route === 'how' && <HowPage lang={lang} navigate={navigate} />}

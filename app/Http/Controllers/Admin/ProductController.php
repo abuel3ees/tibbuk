@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\ProcessVariantImages;
 use App\Models\Product;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -61,9 +62,18 @@ class ProductController extends Controller
             $validated['featured_image'] = $request->file('featured_image')->store('products', 'public');
         }
 
-        $validated['variants'] = $this->processVariantImages($request, $validated['variants'] ?? []);
+        $variants = $validated['variants'] ?? [];
+        $imageCount = $this->countVariantImages($request, $variants);
 
-        Product::create($validated);
+        if ($imageCount >= 2) {
+            [$variants, $pending] = $this->storeVariantImagesPending($request, $variants);
+            $validated['variants'] = $variants;
+            $product = Product::create($validated);
+            ProcessVariantImages::dispatch($product->id, $pending);
+        } else {
+            $validated['variants'] = $this->processVariantImages($request, $variants);
+            Product::create($validated);
+        }
 
         return redirect()->route('admin.products.index')
             ->with('success', 'Product created successfully.');
@@ -93,13 +103,28 @@ class ProductController extends Controller
             unset($validated['featured_image']);
         }
 
-        $validated['variants'] = $this->processVariantImages(
-            $request,
-            $validated['variants'] ?? [],
-            $product->getRawOriginal('variants') ? json_decode($product->getRawOriginal('variants'), true) : []
-        );
+        $variants = $validated['variants'] ?? [];
+        $existing = $product->getRawOriginal('variants') ? json_decode($product->getRawOriginal('variants'), true) : [];
+        $imageCount = $this->countVariantImages($request, $variants);
 
-        $product->update($validated);
+        if ($imageCount >= 2) {
+            // Delete old images for slots being replaced before queuing
+            foreach (array_keys($variants) as $i) {
+                if ($request->hasFile("variants.{$i}.image")) {
+                    $oldImage = $existing[$i]['image'] ?? null;
+                    if ($oldImage && !str_starts_with($oldImage, 'http')) {
+                        Storage::disk('public')->delete($oldImage);
+                    }
+                }
+            }
+            [$variants, $pending] = $this->storeVariantImagesPending($request, $variants, $existing);
+            $validated['variants'] = $variants;
+            $product->update($validated);
+            ProcessVariantImages::dispatch($product->id, $pending);
+        } else {
+            $validated['variants'] = $this->processVariantImages($request, $variants, $existing);
+            $product->update($validated);
+        }
 
         return redirect()->route('admin.products.index')
             ->with('success', 'Product updated successfully.');
@@ -291,6 +316,33 @@ class ProductController extends Controller
         ]);
     }
 
+    private function countVariantImages(Request $request, array $variants): int
+    {
+        $count = 0;
+        foreach (array_keys($variants) as $i) {
+            if ($request->hasFile("variants.{$i}.image")) $count++;
+        }
+        return $count;
+    }
+
+    private function storeVariantImagesPending(Request $request, array $variants, array $existing = []): array
+    {
+        $pending = [];
+        foreach ($variants as $i => &$variant) {
+            if ($request->hasFile("variants.{$i}.image")) {
+                $temp = $request->file("variants.{$i}.image")->store('products/variants/pending', 'public');
+                $variant['image'] = $temp;
+                $pending[$i] = $temp;
+            } else {
+                $raw = $variant['current_image'] ?? ($existing[$i]['image'] ?? null);
+                $variant['image'] = $raw ? $this->toRawPath($raw) : null;
+            }
+            unset($variant['current_image']);
+        }
+        unset($variant);
+        return [$variants, $pending];
+    }
+
     private function processVariantImages(Request $request, array $variants, array $existing = []): array
     {
         foreach ($variants as $i => &$variant) {
@@ -302,13 +354,26 @@ class ProductController extends Controller
                 }
                 $variant['image'] = $request->file("variants.{$i}.image")->store('products/variants', 'public');
             } else {
-                // Keep the existing image or the current_image passed from the form
-                $variant['image'] = $variant['current_image'] ?? ($existing[$i]['image'] ?? null);
+                // The form sends back current_image which may already be a /storage/ URL
+                // (because the model accessor transforms raw paths to URLs for the frontend).
+                // Strip the prefix so we always store a raw relative path in the DB.
+                $raw = $variant['current_image'] ?? ($existing[$i]['image'] ?? null);
+                $variant['image'] = $raw ? $this->toRawPath($raw) : null;
             }
             unset($variant['current_image']);
         }
         unset($variant);
         return $variants;
+    }
+
+    private function toRawPath(?string $path): ?string
+    {
+        if (!$path) return null;
+        // Strip /storage/ prefix added by Storage::url() so we store the raw disk path
+        if (str_starts_with($path, '/storage/')) {
+            return ltrim(substr($path, strlen('/storage/')), '/');
+        }
+        return $path;
     }
 
     private function uniqueSlug(string $name, ?int $excludeId = null): string

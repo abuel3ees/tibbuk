@@ -652,11 +652,11 @@ html.tibbak[dir="rtl"] .tbk .drawer { transform: translateX(-100%); }
 /* ----- checkout modal ----- */
 .tbk .checkout-overlay {
   position: fixed; inset: 0; background: rgba(22,32,29,0.5);
-  z-index: 200; display: flex; align-items: center; justify-content: center; padding: 20px;
+  z-index: 200; overflow-y: auto; padding: 32px 20px;
 }
 .tbk .checkout-modal {
-  background: var(--paper); width: 100%; max-width: 540px; max-height: 90vh;
-  overflow-y: auto; border-radius: var(--tbk-radius-lg);
+  background: var(--paper); width: 100%; max-width: 540px; margin: 0 auto;
+  border-radius: var(--tbk-radius-lg);
   box-shadow: 0 24px 64px rgba(22,32,29,0.2);
 }
 .tbk .checkout-modal__head {

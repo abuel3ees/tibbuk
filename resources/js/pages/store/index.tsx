@@ -20,7 +20,7 @@ interface Product {
     allows_engraving: boolean;
 }
 
-interface CartItem { id: number; qty: number; variant: string | null }
+interface CartItem { id: number; qty: number; variant: string | null; engraving?: string }
 
 // ---- BILINGUAL COPY ----
 const COPY = {
@@ -469,14 +469,15 @@ function ProductCard({ product, lang, onAdd, onNavigate }: {
     const salePrice = product.sale_price ? Number(product.sale_price) : null;
     const inStock = product.stock_status === 'in_stock';
     const hasVariants = (product.variants?.length ?? 0) > 0;
-    const quickLabel = hasVariants
+    const needsPDP = hasVariants || product.allows_engraving;
+    const quickLabel = needsPDP
         ? (lang === 'en' ? 'View options' : 'عرض الخيارات')
         : (lang === 'en' ? 'Add to cart' : 'أضف إلى السلّة');
     const oosLabel = lang === 'en' ? 'Out of stock' : 'نفذت الكمّية';
 
     function handleMediaClick() {
         if (!inStock) return;
-        if (hasVariants) onNavigate(product);
+        if (needsPDP) onNavigate(product);
         else onAdd(product);
     }
 
@@ -764,6 +765,7 @@ function CartDrawer({ open, onClose, lang, cart, setCart, products, navigate, on
                                         <div className="cart-line__name">{l.product.name}</div>
                                         {l.variant && <div className="cart-line__cat">{l.variant}</div>}
                                         {!l.variant && l.product.category && <div className="cart-line__cat">{l.product.category}</div>}
+                                        {l.engraving && <div className="cart-line__cat" style={{ fontStyle: 'italic', fontSize: 12 }}>✎ {l.engraving}</div>}
                                         <div className="cart-line__qty">
                                             <button onClick={() => setQty(l.id, l.variant, l.qty - 1)} aria-label="Decrease">−</button>
                                             <span className="v">{l.qty}</span>
@@ -810,10 +812,11 @@ function CartDrawer({ open, onClose, lang, cart, setCart, products, navigate, on
 }
 
 // ---- CHECKOUT MODAL ----
-function CheckoutModal({ open, onClose, cart, products, lang }: {
+function CheckoutModal({ open, onClose, cart, setCart, products, lang }: {
     open: boolean;
     onClose: () => void;
     cart: CartItem[];
+    setCart: React.Dispatch<React.SetStateAction<CartItem[]>>;
     products: Product[];
     lang: Lang;
 }) {
@@ -829,7 +832,13 @@ function CheckoutModal({ open, onClose, cart, products, lang }: {
     });
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [submitting, setSubmitting] = useState(false);
-    const [engravingTexts, setEngravingTexts] = useState<Record<string, string>>({});
+    const [engravingTexts, setEngravingTexts] = useState<Record<string, string>>(() => {
+        const init: Record<string, string> = {};
+        for (const item of cart) {
+            if (item.engraving) init[`${item.id}-${item.variant}`] = item.engraving;
+        }
+        return init;
+    });
 
     const items = cart.map(line => {
         const product = products.find(p => p.id === line.id);
@@ -878,7 +887,12 @@ function CheckoutModal({ open, onClose, cart, products, lang }: {
             })),
         }, {
             onError: (serverErrs) => { setErrors(serverErrs); setSubmitting(false); },
-            onSuccess: () => { setForm({ customer_name: '', customer_phone: '', customer_email: '', customer_facebook: '', delivery_address: '', notes: '' }); setEngravingTexts({}); setCart([]); },
+            onSuccess: () => {
+                setForm({ customer_name: '', customer_phone: '', customer_email: '', customer_facebook: '', delivery_address: '', notes: '' });
+                setEngravingTexts({});
+                setCart([]);
+                onClose();
+            },
         });
     }
 
@@ -1325,8 +1339,9 @@ function ProductPage({ lang, productId, navigate, products, addToCart }: {
     const [qty, setQty] = useState(1);
     const [selectedVariant, setSelectedVariant] = useState<string | null>(null);
     const [variantError, setVariantError] = useState('');
+    const [engravingText, setEngravingText] = useState('');
 
-    useEffect(() => { setQty(1); setSelectedVariant(null); setVariantError(''); }, [productId]);
+    useEffect(() => { setQty(1); setSelectedVariant(null); setVariantError(''); setEngravingText(''); }, [productId]);
 
     if (!product) {
         return (
@@ -1360,7 +1375,8 @@ function ProductPage({ lang, productId, navigate, products, addToCart }: {
             return;
         }
         setVariantError('');
-        addToCart(product.id, selectedVariant);
+        const engraving = product.allows_engraving && engravingText.trim() ? engravingText.trim() : undefined;
+        addToCart(product.id, selectedVariant, engraving);
         if (qty > 1) {
             for (let i = 1; i < qty; i++) addToCart(product.id, selectedVariant);
         }
@@ -1439,6 +1455,31 @@ function ProductPage({ lang, productId, navigate, products, addToCart }: {
                             </div>
                             {variantError && (
                                 <p style={{ fontSize: 13, color: 'var(--warn, #c0392b)', marginTop: 8 }}>{variantError}</p>
+                            )}
+                        </div>
+                    )}
+
+                    {product.allows_engraving && (
+                        <div style={{ marginTop: 20, paddingTop: 20, borderTop: '1px solid var(--rule-soft)' }}>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ink-mute)', marginBottom: 8 }}>
+                                <EngraveIcon />
+                                {COPY[lang].checkout.engravingLabel}
+                                <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0, color: 'var(--ink-mute)', opacity: 0.7 }}>
+                                    ({lang === 'en' ? 'optional' : 'اختياري'})
+                                </span>
+                            </label>
+                            <input
+                                type="text"
+                                maxLength={30}
+                                placeholder={COPY[lang].checkout.engravingPlaceholder}
+                                value={engravingText}
+                                onChange={e => setEngravingText(e.target.value)}
+                                style={{ width: '100%', padding: '10px 14px', border: '1px solid var(--rule)', borderRadius: 'var(--tbk-radius)', background: 'var(--paper)', color: 'var(--ink)', fontSize: 14, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
+                            />
+                            {engravingText && (
+                                <div style={{ fontSize: 12, color: 'var(--ink-mute)', marginTop: 4, textAlign: 'end' }}>
+                                    {30 - engravingText.length} {lang === 'en' ? 'chars left' : 'حرف متبقّ'}
+                                </div>
                             )}
                         </div>
                     )}
@@ -1764,11 +1805,11 @@ export default function StoreIndex({ products, hero_image, hero_content }: Props
         setTimeout(() => setToast(t => ({ ...t, on: false })), 1800);
     }
 
-    function addToCart(id: number, variant: string | null = null) {
+    function addToCart(id: number, variant: string | null = null, engraving?: string) {
         setCart(c => {
             const found = c.find(l => l.id === id && l.variant === variant);
             if (found) return c.map(l => l.id === id && l.variant === variant ? { ...l, qty: l.qty + 1 } : l);
-            return [...c, { id, qty: 1, variant }];
+            return [...c, { id, qty: 1, variant, engraving }];
         });
         showToast(COPY[lang].addedToast);
         setCartOpen(true);
@@ -1812,6 +1853,7 @@ export default function StoreIndex({ products, hero_image, hero_content }: Props
                 open={checkoutOpen}
                 onClose={() => setCheckoutOpen(false)}
                 cart={cart}
+                setCart={setCart}
                 products={products}
                 lang={lang}
             />

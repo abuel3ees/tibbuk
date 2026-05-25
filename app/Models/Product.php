@@ -36,7 +36,7 @@ class Product extends Model
     public function getFeaturedImageAttribute(?string $value): ?string
     {
         if (!$value) return null;
-        if (str_starts_with($value, 'http')) return $value;
+        if ($this->isAlreadyUrl($value)) return $value;
         return Storage::url($value);
     }
 
@@ -48,7 +48,7 @@ class Product extends Model
                 $arr = is_string($value) ? json_decode($value, true) : (is_array($value) ? $value : null);
                 if (!$arr) return null;
                 return array_map(function ($v) {
-                    if (!empty($v['image']) && !str_starts_with($v['image'], 'http')) {
+                    if (!empty($v['image']) && !$this->isAlreadyUrl($v['image'])) {
                         $v['image'] = Storage::url($v['image']);
                     }
                     return $v;
@@ -56,5 +56,11 @@ class Product extends Model
             },
             set: fn ($value) => is_array($value) ? json_encode($value) : $value,
         );
+    }
+
+    private function isAlreadyUrl(string $value): bool
+    {
+        return str_starts_with($value, 'http')
+            || str_starts_with($value, '/storage/');
     }
 }

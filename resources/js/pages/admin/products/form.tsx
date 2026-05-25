@@ -66,6 +66,31 @@ export default function ProductForm({ product, categories }: Props) {
     const [preview, setPreview] = useState<string | null>(product?.featured_image ?? null);
     const [dragOver, setDragOver] = useState(false);
 
+    // Profit margin is displayed/entered as JD amount; stored as cost_price in DB
+    const [profitMargin, setProfitMargin] = useState<string>(() => {
+        if (!product?.cost_price || !product?.price) return '';
+        const ep = product.sale_price && Number(product.sale_price) < Number(product.price)
+            ? Number(product.sale_price)
+            : Number(product.price);
+        const margin = ep - Number(product.cost_price);
+        return margin > 0 ? String(margin.toFixed(2)) : '';
+    });
+
+    function getEffectivePrice(price: string, salePrice: string): number {
+        const sp = Number(salePrice);
+        const p = Number(price);
+        return sp > 0 && sp < p ? sp : p;
+    }
+
+    function applyMargin(margin: string, price: string, salePrice: string) {
+        const ep = getEffectivePrice(price, salePrice);
+        if (margin && ep > 0) {
+            const cost = Math.max(0, ep - Number(margin));
+            return String(cost.toFixed(2));
+        }
+        return '';
+    }
+
     const { data, setData, post, put, processing, errors } = useForm(
         product ? {
             name: product.name ?? '',
@@ -210,13 +235,16 @@ export default function ProductForm({ product, categories }: Props) {
                     <div className="p-8">
                         <h2 className="text-xs tracking-widest uppercase text-stone-400 mb-6">Pricing (JD)</h2>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            <Field label="Regular Price *" error={errors.price}>
+                            <Field label="Selling Price *" error={errors.price}>
                                 <input
                                     type="number"
                                     step="0.01"
                                     min="0"
                                     value={data.price}
-                                    onChange={e => setData('price', e.target.value)}
+                                    onChange={e => {
+                                        setData('price', e.target.value);
+                                        setData('cost_price', applyMargin(profitMargin, e.target.value, data.sale_price));
+                                    }}
                                     className={inputClass}
                                     placeholder="0.00"
                                 />
@@ -227,29 +255,53 @@ export default function ProductForm({ product, categories }: Props) {
                                     step="0.01"
                                     min="0"
                                     value={data.sale_price}
-                                    onChange={e => setData('sale_price', e.target.value)}
+                                    onChange={e => {
+                                        setData('sale_price', e.target.value);
+                                        setData('cost_price', applyMargin(profitMargin, data.price, e.target.value));
+                                    }}
                                     className={inputClass}
                                     placeholder="Leave blank if no sale"
                                 />
                             </Field>
-                            <Field label="Cost Price" error={errors.cost_price}>
+                            <Field label="Profit Margin (JD)" error={errors.cost_price}>
                                 <input
                                     type="number"
                                     step="0.01"
                                     min="0"
-                                    value={data.cost_price}
-                                    onChange={e => setData('cost_price', e.target.value)}
+                                    value={profitMargin}
+                                    onChange={e => {
+                                        setProfitMargin(e.target.value);
+                                        setData('cost_price', applyMargin(e.target.value, data.price, data.sale_price));
+                                    }}
                                     className={inputClass}
-                                    placeholder="For profit calculations"
+                                    placeholder="How much you make per sale"
                                 />
                             </Field>
                         </div>
-                        {data.sale_price && data.price && Number(data.sale_price) < Number(data.price) && (
-                            <p className="mt-3 text-xs text-green-600">
-                                Discount: {((1 - Number(data.sale_price) / Number(data.price)) * 100).toFixed(0)}% off
-                                {data.cost_price && ` · Profit at sale price: JD ${(Number(data.sale_price) - Number(data.cost_price)).toFixed(2)}`}
-                            </p>
-                        )}
+                        {(() => {
+                            const ep = getEffectivePrice(data.price, data.sale_price);
+                            const margin = Number(profitMargin);
+                            const hasSale = data.sale_price && Number(data.sale_price) < Number(data.price);
+                            const pct = ep > 0 && margin > 0 ? (margin / ep * 100).toFixed(0) : null;
+                            if (!margin || !ep) return null;
+                            return (
+                                <div className="mt-4 p-3 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900 rounded-lg text-sm">
+                                    <span className="text-emerald-700 dark:text-emerald-400 font-semibold">
+                                        Profit: JD {margin.toFixed(2)} per sale{pct ? ` · ${pct}% margin` : ''}
+                                    </span>
+                                    {hasSale && (
+                                        <span className="text-emerald-600 dark:text-emerald-500 text-xs ml-2">
+                                            (on sale price of JD {Number(data.sale_price).toFixed(2)})
+                                        </span>
+                                    )}
+                                    {data.variants.length > 0 && (
+                                        <p className="text-emerald-600 dark:text-emerald-500 text-xs mt-1">
+                                            Variants have individual prices — this margin is for the base item only.
+                                        </p>
+                                    )}
+                                </div>
+                            );
+                        })()}
                     </div>
 
                     {/* Inventory & Image */}

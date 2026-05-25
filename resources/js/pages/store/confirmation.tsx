@@ -1,5 +1,6 @@
+import '../../../css/tibbak.css';
 import { Head, Link } from '@inertiajs/react';
-import { CheckCircle } from 'lucide-react';
+import { useEffect } from 'react';
 
 interface OrderItem {
     id: number;
@@ -20,88 +21,99 @@ interface Order {
     items: OrderItem[];
 }
 
-interface Props {
-    order: Order;
-}
+interface Props { order: Order; }
 
 export default function Confirmation({ order }: Props) {
     const orderNo = String(order.id).padStart(5, '0');
 
+    useEffect(() => {
+        document.documentElement.classList.add('tibbak');
+        document.documentElement.lang = 'en';
+        document.documentElement.dir = 'ltr';
+        return () => document.documentElement.classList.remove('tibbak');
+    }, []);
+
     return (
-        <>
-            <Head title={`Order #${orderNo} Confirmed — MedStore Jordan`} />
+        <div className="tbk" style={{ minHeight: '100vh', background: 'var(--paper)' }}>
+            <Head title={`Order #${orderNo} Confirmed — Tibbak`} />
 
-            <div className="min-h-screen bg-stone-50 flex flex-col">
-                {/* Nav */}
-                <nav className="bg-white border-b border-stone-100 px-6 lg:px-10">
-                    <div className="max-w-7xl mx-auto flex items-center h-16">
-                        <Link href="/" className="text-xl font-light tracking-[0.2em] uppercase text-stone-900">
-                            MedStore<span className="font-semibold">Jo</span>
-                        </Link>
+            <header className="site-header" style={{ position: 'relative' }}>
+                <div className="wrap site-header__bar">
+                    <Link href="/" className="brand">
+                        <span className="brand__word">Tibbak</span>
+                        <span className="brand__dot" />
+                        <span className="brand__ar">طِبّك</span>
+                    </Link>
+                    <div />
+                    <div />
+                </div>
+            </header>
+
+            <div className="wrap" style={{ paddingBlock: '80px 96px', maxWidth: 720 }}>
+                <div style={{ textAlign: 'center', marginBottom: 48 }}>
+                    <div style={{
+                        width: 64, height: 64, margin: '0 auto 20px',
+                        borderRadius: '50%', background: 'var(--primary-3)',
+                        display: 'grid', placeItems: 'center', color: 'var(--primary)',
+                    }}>
+                        <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M4 12.5 9.5 18 20 6.5"/>
+                        </svg>
                     </div>
-                </nav>
+                    <h1 className="h2" style={{ marginBottom: 12 }}>Order Confirmed</h1>
+                    <p className="body-lg">Thank you, {order.customer_name}. Your order has been received and will be processed shortly.</p>
+                </div>
 
-                <div className="flex-1 flex items-center justify-center px-6 py-20">
-                    <div className="w-full max-w-2xl">
-                        {/* Success header */}
-                        <div className="text-center mb-12">
-                            <CheckCircle className="w-16 h-16 text-stone-700 mx-auto mb-6" strokeWidth={1} />
-                            <h1 className="text-3xl font-light text-stone-900 mb-2">Order Confirmed</h1>
-                            <p className="text-stone-400">Thank you, {order.customer_name}. Your order has been received.</p>
+                <div style={{ border: '1px solid var(--rule)', borderRadius: 'var(--tbk-radius-lg)', overflow: 'hidden', background: 'var(--paper)' }}>
+                    <div style={{ padding: '20px 28px', borderBottom: '1px solid var(--rule)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                            <div className="eyebrow" style={{ marginBottom: 4 }}>Order Number</div>
+                            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 24, fontWeight: 500 }}>#{orderNo}</div>
                         </div>
+                        <span className="pill">{order.status}</span>
+                    </div>
 
-                        {/* Order detail card */}
-                        <div className="bg-white border border-stone-100">
-                            <div className="px-8 py-6 border-b border-stone-100 flex items-center justify-between">
-                                <div>
-                                    <p className="text-xs tracking-widest uppercase text-stone-400 mb-1">Order Number</p>
-                                    <p className="text-2xl font-light text-stone-900">#{orderNo}</p>
-                                </div>
-                                <span className="text-xs tracking-widest uppercase px-3 py-1.5 border border-amber-200 bg-amber-50 text-amber-700">
-                                    {order.status}
-                                </span>
-                            </div>
-
-                            <div className="px-8 py-6 grid grid-cols-2 gap-6 border-b border-stone-100">
-                                <div>
-                                    <p className="text-xs tracking-widest uppercase text-stone-400 mb-1">Phone</p>
-                                    <p className="text-sm text-stone-700">{order.customer_phone}</p>
-                                </div>
-                                <div>
-                                    <p className="text-xs tracking-widest uppercase text-stone-400 mb-1">Delivery Address</p>
-                                    <p className="text-sm text-stone-700">{order.delivery_address}</p>
-                                </div>
-                            </div>
-
-                            <div className="px-8 py-6">
-                                <p className="text-xs tracking-widest uppercase text-stone-400 mb-4">Items Ordered</p>
-                                <div className="space-y-3">
-                                    {order.items.map(item => (
-                                        <div key={item.id} className="flex justify-between text-sm">
-                                            <span className="text-stone-700">{item.product_name} <span className="text-stone-400">× {item.quantity}</span></span>
-                                            <span className="text-stone-900">{(Number(item.unit_price) * item.quantity).toFixed(2)} JOD</span>
-                                        </div>
-                                    ))}
-                                </div>
-                                <div className="flex justify-between font-medium text-sm border-t border-stone-100 mt-4 pt-4">
-                                    <span>Total</span>
-                                    <span>{Number(order.total_amount).toFixed(2)} JOD</span>
-                                </div>
-                            </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0, borderBottom: '1px solid var(--rule)' }}>
+                        <div style={{ padding: '20px 28px', borderInlineEnd: '1px solid var(--rule)' }}>
+                            <div className="eyebrow" style={{ marginBottom: 6 }}>Phone</div>
+                            <div className="body" style={{ color: 'var(--ink)' }}>{order.customer_phone}</div>
                         </div>
+                        <div style={{ padding: '20px 28px' }}>
+                            <div className="eyebrow" style={{ marginBottom: 6 }}>Delivery Address</div>
+                            <div className="body" style={{ color: 'var(--ink)' }}>{order.delivery_address}</div>
+                        </div>
+                    </div>
 
-                        <div className="text-center mt-10">
-                            <p className="text-sm text-stone-400 mb-6">We will contact you on <strong className="text-stone-700">{order.customer_phone}</strong> to confirm delivery details.</p>
-                            <Link
-                                href="/"
-                                className="inline-block text-xs tracking-widest uppercase border border-stone-900 px-10 py-4 text-stone-900 hover:bg-stone-900 hover:text-white transition-colors"
-                            >
-                                Continue Shopping
-                            </Link>
+                    <div style={{ padding: '20px 28px' }}>
+                        <div className="eyebrow" style={{ marginBottom: 16 }}>Items Ordered</div>
+                        <div style={{ display: 'grid', gap: 10 }}>
+                            {order.items.map(item => (
+                                <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14 }}>
+                                    <span style={{ color: 'var(--ink-soft)' }}>
+                                        {item.product_name} <span style={{ color: 'var(--ink-mute)' }}>× {item.quantity}</span>
+                                    </span>
+                                    <span className="num" style={{ color: 'var(--ink)', fontWeight: 600 }}>
+                                        JD {(Number(item.unit_price) * item.quantity).toFixed(2)}
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 14, marginTop: 14, borderTop: '1px solid var(--rule)', fontWeight: 600 }}>
+                            <span>Total</span>
+                            <span className="num">JD {Number(order.total_amount).toFixed(2)}</span>
                         </div>
                     </div>
                 </div>
+
+                <div style={{ textAlign: 'center', marginTop: 40 }}>
+                    <p className="body" style={{ marginBottom: 24 }}>
+                        We will contact you on <strong style={{ color: 'var(--ink)' }}>{order.customer_phone}</strong> to confirm delivery details. Expected delivery within 48 hours.
+                    </p>
+                    <Link href="/" className="btn btn--lg">
+                        Continue Shopping
+                    </Link>
+                </div>
             </div>
-        </>
+        </div>
     );
 }

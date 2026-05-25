@@ -12,6 +12,11 @@ createInertiaApp({
     title: (title) => (title ? `${title} - ${appName}` : appName),
     layout: (name) => {
         switch (true) {
+            // Store and admin pages manage their own layout
+            case name.startsWith('store/'):
+                return null;
+            case name.startsWith('admin/'):
+                return null;
             case name === 'welcome':
                 return null;
             case name.startsWith('auth/'):

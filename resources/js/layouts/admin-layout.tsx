@@ -18,31 +18,42 @@ export default function AdminLayout({ children }: Props) {
     const [mobileOpen, setMobileOpen] = useState(false);
 
     return (
-        <div className="min-h-screen bg-stone-50 flex">
+        <div className="min-h-screen flex" style={{ background: '#F2EDE0' }}>
             {/* Sidebar */}
             <aside className={`
-                fixed inset-y-0 left-0 z-50 w-64 bg-stone-900 text-white flex flex-col
+                fixed inset-y-0 left-0 z-50 w-60 flex flex-col
                 transform transition-transform duration-200
                 ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}
                 lg:translate-x-0 lg:static lg:flex
-            `}>
-                <div className="px-8 py-8 border-b border-stone-800">
-                    <Link href="/" className="text-lg font-light tracking-[0.2em] uppercase">
-                        MedStore<span className="font-semibold">Jo</span>
+            `} style={{ background: '#FBF8F2', borderRight: '1px solid #D7CFBE' }}>
+
+                {/* Brand */}
+                <div className="px-7 py-7" style={{ borderBottom: '1px solid #D7CFBE' }}>
+                    <Link href="/" className="block">
+                        <div style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 22, fontWeight: 600, color: '#16201D', lineHeight: 1, letterSpacing: '-0.01em' }}>
+                            Tibbuk
+                            <span style={{ display: 'inline-block', width: 5, height: 5, background: '#1F5B4A', borderRadius: '50%', margin: '0 5px 2px', verticalAlign: 'middle' }} />
+                            <span style={{ fontFamily: "'Amiri', serif", color: '#1F5B4A' }}>طِبّك</span>
+                        </div>
+                        <p style={{ fontSize: 10, letterSpacing: '0.14em', textTransform: 'uppercase', color: '#6A746F', marginTop: 5 }}>Admin Panel</p>
                     </Link>
-                    <p className="text-[10px] tracking-widest uppercase text-stone-500 mt-1">Admin Panel</p>
                 </div>
 
-                <nav className="flex-1 px-4 py-6 space-y-1">
+                {/* Nav */}
+                <nav className="flex-1 px-3 py-5 space-y-0.5">
                     {nav.map(item => {
                         const active = url === item.href || (item.href !== '/admin' && url.startsWith(item.href));
                         return (
                             <Link
                                 key={item.href}
                                 href={item.href}
-                                className={`flex items-center gap-3 px-4 py-3 text-sm transition-colors rounded-none ${
-                                    active ? 'bg-stone-800 text-white' : 'text-stone-400 hover:text-white hover:bg-stone-800'
-                                }`}
+                                className="flex items-center gap-3 px-4 py-2.5 text-sm transition-colors"
+                                style={active
+                                    ? { background: '#1F5B4A', color: '#FBF8F2', borderRadius: 4 }
+                                    : { color: '#3D4A45', borderRadius: 4 }
+                                }
+                                onMouseEnter={e => { if (!active) (e.currentTarget as HTMLElement).style.background = '#E8E1D0'; }}
+                                onMouseLeave={e => { if (!active) (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
                             >
                                 <item.icon className="w-4 h-4 shrink-0" />
                                 {item.label}
@@ -51,17 +62,25 @@ export default function AdminLayout({ children }: Props) {
                     })}
                 </nav>
 
-                <div className="px-4 py-6 border-t border-stone-800">
+                {/* Footer */}
+                <div className="px-3 py-5" style={{ borderTop: '1px solid #D7CFBE' }}>
                     <Link
                         href="/logout"
                         method="post"
                         as="button"
-                        className="flex items-center gap-3 px-4 py-3 text-sm text-stone-400 hover:text-white hover:bg-stone-800 transition-colors w-full text-left"
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm w-full text-left transition-colors"
+                        style={{ color: '#6A746F', borderRadius: 4 }}
+                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#E8E1D0'; }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
                     >
                         <LogOut className="w-4 h-4" />
                         Sign Out
                     </Link>
-                    <Link href="/" className="flex items-center gap-3 px-4 py-2 text-xs text-stone-500 hover:text-stone-300 transition-colors mt-1">
+                    <Link
+                        href="/"
+                        className="flex items-center gap-2 px-4 py-2 text-xs transition-colors"
+                        style={{ color: '#6A746F' }}
+                    >
                         ← Back to Store
                     </Link>
                 </div>
@@ -69,17 +88,17 @@ export default function AdminLayout({ children }: Props) {
 
             {/* Mobile overlay */}
             {mobileOpen && (
-                <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setMobileOpen(false)} />
+                <div className="fixed inset-0 bg-black/40 z-40 lg:hidden" onClick={() => setMobileOpen(false)} />
             )}
 
             {/* Main */}
             <div className="flex-1 min-w-0 flex flex-col">
                 {/* Mobile header */}
-                <header className="lg:hidden bg-white border-b border-stone-100 px-6 py-4 flex items-center justify-between">
-                    <Link href="/" className="text-lg font-light tracking-[0.2em] uppercase text-stone-900">
-                        MedStore<span className="font-semibold">Jo</span>
-                    </Link>
-                    <button onClick={() => setMobileOpen(!mobileOpen)}>
+                <header className="lg:hidden px-6 py-4 flex items-center justify-between" style={{ background: '#FBF8F2', borderBottom: '1px solid #D7CFBE' }}>
+                    <span style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: 20, fontWeight: 600, color: '#16201D' }}>
+                        Tibbuk <span style={{ fontFamily: "'Amiri', serif", color: '#1F5B4A' }}>طِبّك</span>
+                    </span>
+                    <button onClick={() => setMobileOpen(!mobileOpen)} style={{ color: '#16201D' }}>
                         {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
                     </button>
                 </header>

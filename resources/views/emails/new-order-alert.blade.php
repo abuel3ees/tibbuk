@@ -59,7 +59,12 @@
             <tbody>
                 @foreach($order->items as $item)
                 <tr>
-                    <td>{{ $item->product_name }}</td>
+                    <td>
+                        {{ $item->product_name }}
+                        @if($item->engraving_text)
+                            <br><span style="font-size:12px; color:#888;">✏️ Engraving: {{ $item->engraving_text }}</span>
+                        @endif
+                    </td>
                     <td style="text-align:center;">{{ $item->quantity }}</td>
                     <td style="text-align:right;">{{ number_format($item->unit_price, 2) }} JOD</td>
                     <td style="text-align:right;">{{ number_format($item->unit_price * $item->quantity, 2) }} JOD</td>

@@ -20,9 +20,11 @@ class OrderController extends Controller
             'customer_email'   => ['nullable', 'email', 'max:255'],
             'delivery_address' => ['required', 'string', 'max:500'],
             'notes'            => ['nullable', 'string', 'max:1000'],
-            'items'            => ['required', 'array', 'min:1'],
-            'items.*.product_id' => ['required', 'exists:products,id'],
-            'items.*.quantity'   => ['required', 'integer', 'min:1'],
+            'items'                   => ['required', 'array', 'min:1'],
+            'items.*.product_id'      => ['required', 'exists:products,id'],
+            'items.*.quantity'        => ['required', 'integer', 'min:1'],
+            'items.*.variant'         => ['nullable', 'string', 'max:100'],
+            'items.*.engraving_text'  => ['nullable', 'string', 'max:100'],
         ]);
 
         $total = 0;
@@ -30,16 +32,32 @@ class OrderController extends Controller
 
         foreach ($validated['items'] as $item) {
             $product = Product::findOrFail($item['product_id']);
+
+            // Resolve price: prefer variant price if a matching variant exists
             $price = $product->sale_price ?? $product->price;
-            $subtotal = $price * $item['quantity'];
-            $total += $subtotal;
+            if (!empty($item['variant']) && is_array($product->variants)) {
+                foreach ($product->variants as $v) {
+                    if (($v['value'] ?? null) === $item['variant'] && isset($v['price'])) {
+                        $price = (float) $v['price'];
+                        break;
+                    }
+                }
+            }
+
+            $total += $price * $item['quantity'];
+
+            $engravingText = null;
+            if ($product->allows_engraving && !empty($item['engraving_text'])) {
+                $engravingText = trim($item['engraving_text']);
+            }
 
             $orderItems[] = [
-                'product_id'   => $product->id,
-                'product_name' => $product->name,
-                'quantity'     => $item['quantity'],
-                'unit_price'   => $price,
-                'cost_price'   => $product->cost_price,
+                'product_id'     => $product->id,
+                'product_name'   => $product->name . (!empty($item['variant']) ? ' — ' . $item['variant'] : ''),
+                'quantity'       => $item['quantity'],
+                'unit_price'     => $price,
+                'cost_price'     => $product->cost_price,
+                'engraving_text' => $engravingText,
             ];
         }
 

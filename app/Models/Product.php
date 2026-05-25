@@ -11,7 +11,7 @@ class Product extends Model
     protected $fillable = [
         'sku', 'name', 'slug', 'description', 'excerpt',
         'price', 'sale_price', 'cost_price', 'category',
-        'stock_status', 'quantity', 'featured_image', 'is_active', 'variants',
+        'stock_status', 'quantity', 'featured_image', 'is_active', 'variants', 'allows_engraving',
     ];
 
     protected $casts = [
@@ -19,6 +19,7 @@ class Product extends Model
         'sale_price' => 'decimal:2',
         'cost_price' => 'decimal:2',
         'is_active' => 'boolean',
+        'allows_engraving' => 'boolean',
         'variants' => 'array',
     ];
 

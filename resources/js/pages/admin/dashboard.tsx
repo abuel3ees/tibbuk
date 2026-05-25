@@ -1,6 +1,6 @@
-import { Head, Link, router } from '@inertiajs/react';
-import { useState, useEffect } from 'react';
-import { Package, ShoppingBag, Clock, CheckCircle, TrendingUp, Bell } from 'lucide-react';
+import { Head, Link, router, useForm } from '@inertiajs/react';
+import { useState, useEffect, useRef } from 'react';
+import { Package, ShoppingBag, Clock, CheckCircle, TrendingUp, Bell, ImagePlus, X } from 'lucide-react';
 import AdminLayout from '@/layouts/admin-layout';
 
 interface Stats {
@@ -36,6 +36,7 @@ interface Props {
     stats: Stats;
     financials: Financials;
     recentOrders: Order[];
+    hero_image: string | null;
 }
 
 const statusColors: Record<string, string> = {
@@ -45,7 +46,7 @@ const statusColors: Record<string, string> = {
     cancelled: 'bg-red-50 text-red-700 border-red-200',
 };
 
-export default function Dashboard({ stats, financials, recentOrders }: Props) {
+export default function Dashboard({ stats, financials, recentOrders, hero_image }: Props) {
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [notifOpen, setNotifOpen] = useState(false);
     const [unreadCount, setUnreadCount] = useState(0);
@@ -154,6 +155,9 @@ export default function Dashboard({ stats, financials, recentOrders }: Props) {
                 </div>
             </div>
 
+            {/* Hero image */}
+            <HeroImageCard current={hero_image} />
+
             {/* Notifications panel */}
             {notifOpen && (
                 <div className="fixed inset-0 z-50 flex">
@@ -178,6 +182,86 @@ export default function Dashboard({ stats, financials, recentOrders }: Props) {
                 </div>
             )}
         </AdminLayout>
+    );
+}
+
+function HeroImageCard({ current }: { current: string | null }) {
+    const { data, setData, post, processing, errors } = useForm<{ hero_image: File | null }>({ hero_image: null });
+    const [preview, setPreview] = useState<string | null>(current);
+    const inputRef = useRef<HTMLInputElement>(null);
+
+    function handleFile(file: File) {
+        setData('hero_image', file);
+        setPreview(URL.createObjectURL(file));
+    }
+
+    function handleSubmit(e: React.FormEvent) {
+        e.preventDefault();
+        if (!data.hero_image) return;
+        post('/admin/settings/hero-image', {
+            forceFormData: true,
+            onSuccess: () => setData('hero_image', null),
+        });
+    }
+
+    function handleRemove() {
+        if (!confirm('Remove the hero image? The default image will be shown.')) return;
+        router.delete('/admin/settings/hero-image');
+        setPreview(null);
+    }
+
+    return (
+        <div className="bg-white border border-stone-100 mt-8">
+            <div className="px-8 py-6 border-b border-stone-100">
+                <h2 className="text-sm font-medium text-stone-900">Hero Image</h2>
+                <p className="text-xs text-stone-400 mt-0.5">The large image shown on the store homepage. Replaces the default if set.</p>
+            </div>
+            <div className="px-8 py-6 flex flex-col sm:flex-row gap-6 items-start">
+                <div
+                    className="relative w-48 h-32 border border-stone-200 bg-stone-50 flex items-center justify-center cursor-pointer hover:border-stone-400 transition-colors shrink-0 overflow-hidden"
+                    onClick={() => inputRef.current?.click()}
+                >
+                    {preview ? (
+                        <img src={preview} alt="Hero" className="w-full h-full object-cover" />
+                    ) : (
+                        <div className="flex flex-col items-center gap-2 text-stone-300">
+                            <ImagePlus className="w-8 h-8" />
+                            <span className="text-xs">Click to upload</span>
+                        </div>
+                    )}
+                    <input
+                        ref={inputRef}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); }}
+                    />
+                </div>
+
+                <div className="flex flex-col gap-3">
+                    {errors.hero_image && <p className="text-red-500 text-xs">{errors.hero_image}</p>}
+                    <form onSubmit={handleSubmit} className="flex gap-3">
+                        <button
+                            type="submit"
+                            disabled={!data.hero_image || processing}
+                            className="bg-stone-900 text-white px-6 py-2.5 text-xs tracking-widest uppercase hover:bg-stone-700 transition-colors disabled:opacity-40"
+                        >
+                            {processing ? 'Saving…' : 'Save Image'}
+                        </button>
+                        {preview && current && (
+                            <button
+                                type="button"
+                                onClick={handleRemove}
+                                className="flex items-center gap-1.5 px-4 py-2.5 text-xs tracking-widest uppercase border border-stone-200 text-stone-500 hover:border-red-300 hover:text-red-500 transition-colors"
+                            >
+                                <X className="w-3.5 h-3.5" /> Remove
+                            </button>
+                        )}
+                    </form>
+                    <p className="text-xs text-stone-400">Recommended: 1200×800px or wider. Max 8 MB.</p>
+                </div>
+            </div>
+        </div>
     );
 }
 

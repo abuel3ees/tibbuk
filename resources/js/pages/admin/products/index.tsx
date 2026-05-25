@@ -1,6 +1,6 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { Plus, Pencil, Trash2, Search, X, Filter, Upload } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, X, Filter, Upload, Eye, EyeOff } from 'lucide-react';
 import AdminLayout from '@/layouts/admin-layout';
 
 interface Product {
@@ -76,6 +76,12 @@ export default function ProductsIndex({ products, categories, filters }: Props) 
         });
     }
 
+    function handleBulkVisibility(active: boolean) {
+        const label = active ? 'active (visible to customers)' : 'hidden';
+        if (!confirm(`Set ALL products as ${label}?`)) return;
+        router.post('/admin/products/bulk-visibility', { active });
+    }
+
     return (
         <AdminLayout>
             <Head title="Products — Admin" />
@@ -86,6 +92,22 @@ export default function ProductsIndex({ products, categories, filters }: Props) 
                     <p className="text-sm text-stone-400 mt-0.5">{products.total} total products</p>
                 </div>
                 <div className="flex items-center gap-3">
+                    <button
+                        onClick={() => handleBulkVisibility(true)}
+                        title="Set all products as active"
+                        className="flex items-center gap-2 border border-stone-200 bg-white text-stone-600 px-4 py-3 text-xs tracking-widest uppercase hover:border-green-400 hover:text-green-700 transition-colors"
+                    >
+                        <Eye className="w-4 h-4" />
+                        All Active
+                    </button>
+                    <button
+                        onClick={() => handleBulkVisibility(false)}
+                        title="Set all products as hidden"
+                        className="flex items-center gap-2 border border-stone-200 bg-white text-stone-600 px-4 py-3 text-xs tracking-widest uppercase hover:border-red-300 hover:text-red-600 transition-colors"
+                    >
+                        <EyeOff className="w-4 h-4" />
+                        All Hidden
+                    </button>
                     <button
                         onClick={() => setImportOpen(true)}
                         className="flex items-center gap-2 border border-stone-200 bg-white text-stone-600 px-5 py-3 text-xs tracking-widest uppercase hover:border-stone-400 hover:text-stone-900 transition-colors"
@@ -225,18 +247,20 @@ export default function ProductsIndex({ products, categories, filters }: Props) 
             {/* Pagination */}
             {products.last_page > 1 && (
                 <div className="flex items-center justify-center gap-2 mt-8">
-                    {products.links.map((link, i) => (
-                        link.url ? (
-                            <Link
+                    {products.links.map((link, i) => {
+                        if (!link.url) {
+                            return <span key={i} className="px-4 py-2 text-xs border border-stone-100 text-stone-300" dangerouslySetInnerHTML={{ __html: link.label }} />;
+                        }
+                        const page = new URL(link.url).searchParams.get('page') ?? '1';
+                        return (
+                            <button
                                 key={i}
-                                href={link.url}
+                                onClick={() => applyFilters({ page })}
                                 className={`px-4 py-2 text-xs border transition-colors ${link.active ? 'bg-stone-900 text-white border-stone-900' : 'border-stone-200 text-stone-600 hover:border-stone-500'}`}
                                 dangerouslySetInnerHTML={{ __html: link.label }}
                             />
-                        ) : (
-                            <span key={i} className="px-4 py-2 text-xs border border-stone-100 text-stone-300" dangerouslySetInnerHTML={{ __html: link.label }} />
-                        )
-                    ))}
+                        );
+                    })}
                 </div>
             )}
         </AdminLayout>

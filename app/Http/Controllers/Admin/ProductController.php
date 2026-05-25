@@ -116,6 +116,16 @@ class ProductController extends Controller
             ->with('success', 'Product deleted.');
     }
 
+    public function bulkVisibility(Request $request): RedirectResponse
+    {
+        $request->validate(['active' => ['required', 'boolean']]);
+        $active = (bool) $request->input('active');
+        Product::query()->update(['is_active' => $active]);
+        $label = $active ? 'active' : 'hidden';
+        return redirect()->route('admin.products.index')
+            ->with('success', "All products set to {$label}.");
+    }
+
     public function import(Request $request): RedirectResponse
     {
         $request->validate([
@@ -270,7 +280,8 @@ class ProductController extends Controller
             'stock_status'  => ['required', 'in:in_stock,out_of_stock'],
             'quantity'      => ['nullable', 'integer', 'min:0'],
             'featured_image' => ['nullable', 'image', 'max:4096'],
-            'is_active'     => ['boolean'],
+            'is_active'        => ['boolean'],
+            'allows_engraving' => ['boolean'],
             'variants'               => ['nullable', 'array'],
             'variants.*.value'       => ['required_with:variants', 'string', 'max:100'],
             'variants.*.price'       => ['required_with:variants', 'numeric', 'min:0'],

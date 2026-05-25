@@ -16,6 +16,7 @@ interface Product {
     excerpt: string | null;
     description: string | null;
     variants: ProductVariant[] | null;
+    allows_engraving: boolean;
 }
 
 interface CartItem { id: number; qty: number; variant: string | null }
@@ -139,6 +140,8 @@ const COPY = {
             summary: 'Order Summary',
             submit: 'Place Order',
             submitting: 'Placing Order…',
+            engravingLabel: 'Name on product',
+            engravingPlaceholder: 'e.g. Dr. Ahmad — up to 30 characters',
         },
     },
     ar: {
@@ -256,6 +259,8 @@ const COPY = {
             addressPlaceholder: 'عنوان التوصيل الكامل في الأردنّ',
             notesPlaceholder: 'أيّ طلبات خاصّة…',
             summary: 'ملخّص الطلب',
+            engravingLabel: 'الاسم على المنتج',
+            engravingPlaceholder: 'مثال: د. أحمد — حتى ٣٠ حرفاً',
             submit: 'أكمل الطلب',
             submitting: 'جارٍ الطلب…',
         },
@@ -805,6 +810,7 @@ function CheckoutModal({ open, onClose, cart, products, lang }: {
     });
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [submitting, setSubmitting] = useState(false);
+    const [engravingTexts, setEngravingTexts] = useState<Record<string, string>>({});
 
     const items = cart.map(line => {
         const product = products.find(p => p.id === line.id);
@@ -842,10 +848,15 @@ function CheckoutModal({ open, onClose, cart, products, lang }: {
         setSubmitting(true);
         router.post('/orders', {
             ...form,
-            items: cart.map(i => ({ product_id: i.id, quantity: i.qty })),
+            items: cart.map(i => ({
+                product_id: i.id,
+                quantity: i.qty,
+                variant: i.variant ?? undefined,
+                engraving_text: engravingTexts[`${i.id}-${i.variant}`] || undefined,
+            })),
         }, {
             onError: (serverErrs) => { setErrors(serverErrs); setSubmitting(false); },
-            onSuccess: () => { setForm({ customer_name: '', customer_phone: '', customer_email: '', delivery_address: '', notes: '' }); },
+            onSuccess: () => { setForm({ customer_name: '', customer_phone: '', customer_email: '', delivery_address: '', notes: '' }); setEngravingTexts({}); },
         });
     }
 
@@ -896,6 +907,32 @@ function CheckoutModal({ open, onClose, cart, products, lang }: {
                             />
                         </div>
 
+                        {items.some(l => l.product.allows_engraving) && (
+                            <div className="form-field">
+                                {items.filter(l => l.product.allows_engraving).map(l => {
+                                    const key = `${l.id}-${l.variant}`;
+                                    return (
+                                        <div key={key} style={{ marginBottom: '0.75rem' }}>
+                                            <label>
+                                                {t.engravingLabel}
+                                                {' '}
+                                                <span style={{ fontWeight: 400, opacity: 0.6, fontSize: '0.8em' }}>
+                                                    — {l.product.name}{l.variant ? ` (${l.variant})` : ''}
+                                                </span>
+                                            </label>
+                                            <input
+                                                type="text"
+                                                placeholder={t.engravingPlaceholder}
+                                                maxLength={30}
+                                                value={engravingTexts[key] ?? ''}
+                                                onChange={e => setEngravingTexts(prev => ({ ...prev, [key]: e.target.value }))}
+                                            />
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+
                         <div className="order-summary">
                             <div className="order-summary__title">{t.summary}</div>
                             {items.map(l => (
@@ -936,11 +973,12 @@ function Toast({ message, on }: { message: string; on: boolean }) {
 }
 
 // ---- HOME PAGE ----
-function HomePage({ lang, navigate, products, addToCart }: {
+function HomePage({ lang, navigate, products, addToCart, heroImage }: {
     lang: Lang;
     navigate: (r: string, pid?: number | null, cat?: string | null) => void;
     products: Product[];
     addToCart: (id: number, variant?: string | null) => void;
+    heroImage: string | null;
 }) {
     const t = COPY[lang];
     const featured = products.slice(0, 8);
@@ -971,7 +1009,7 @@ function HomePage({ lang, navigate, products, addToCart }: {
                             </div>
                         </div>
                         <div className="hero__media">
-                            <PHolder accent="default" label={lang === 'en' ? 'product hero: stethoscope flat-lay' : 'صورة المنتج: سمّاعة'} />
+                            <img src={heroImage ?? '/assets/hero.png'} alt={t.hero.title_a + t.hero.title_em + t.hero.title_b} />
                         </div>
                     </div>
                 </div>
@@ -1585,9 +1623,10 @@ function HowPage({ lang, navigate }: { lang: Lang; navigate: (r: string) => void
 interface Props {
     products: Product[];
     categories: string[];
+    hero_image: string | null;
 }
 
-export default function StoreIndex({ products }: Props) {
+export default function StoreIndex({ products, hero_image }: Props) {
     const [lang, setLang] = useState<Lang>('en');
     const [route, setRoute] = useState('home');
     const [productId, setProductId] = useState<number | null>(null);
@@ -1648,7 +1687,7 @@ export default function StoreIndex({ products }: Props) {
             <MetaStrip t={COPY[lang]} />
             <Header lang={lang} setLang={setLang} route={route} navigate={navigate} cartCount={cartCount} openCart={() => setCartOpen(true)} openSearch={() => setSearchOpen(true)} />
             <main id="main">
-                {route === 'home' && <HomePage lang={lang} navigate={navigate} products={products} addToCart={addToCart} />}
+                {route === 'home' && <HomePage lang={lang} navigate={navigate} products={products} addToCart={addToCart} heroImage={hero_image} />}
                 {route === 'collection' && <CollectionPage lang={lang} products={products} navigate={navigate} addToCart={addToCart} initialCat={initialCat} />}
                 {route === 'product' && productId !== null && <ProductPage lang={lang} productId={productId} navigate={navigate} products={products} addToCart={addToCart} />}
                 {route === 'how' && <HowPage lang={lang} navigate={navigate} />}

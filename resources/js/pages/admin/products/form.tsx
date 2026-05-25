@@ -30,6 +30,7 @@ interface Product {
     quantity: string;
     featured_image: string | null;
     is_active: boolean;
+    allows_engraving: boolean;
     variants: StoredVariant[] | null;
 }
 
@@ -55,6 +56,7 @@ const defaultValues = {
     quantity: '',
     featured_image: null as File | null,
     is_active: true,
+    allows_engraving: false,
     variants: [] as Variant[],
 };
 
@@ -78,6 +80,7 @@ export default function ProductForm({ product, categories }: Props) {
             quantity: String(product.quantity ?? ''),
             featured_image: null as File | null,
             is_active: product.is_active ?? true,
+            allows_engraving: product.allows_engraving ?? false,
             variants: (product.variants ?? []).map(toFormVariant),
         } : defaultValues
     );
@@ -338,6 +341,16 @@ export default function ProductForm({ product, categories }: Props) {
                                 className="w-4 h-4 accent-stone-900"
                             />
                             <label htmlFor="is_active" className="text-sm text-stone-700">Active — visible to customers in the store</label>
+                        </div>
+                        <div className="mt-3 flex items-center gap-3">
+                            <input
+                                type="checkbox"
+                                id="allows_engraving"
+                                checked={data.allows_engraving}
+                                onChange={e => setData('allows_engraving', e.target.checked)}
+                                className="w-4 h-4 accent-stone-900"
+                            />
+                            <label htmlFor="allows_engraving" className="text-sm text-stone-700">Allows engraving — show "name on product" field at checkout</label>
                         </div>
                     </div>
                     {/* Variants */}

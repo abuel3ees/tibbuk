@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\NotificationController;
 use App\Http\Controllers\Admin\OrderController as AdminOrderController;
 use App\Http\Controllers\Admin\ProductController as AdminProductController;
@@ -28,6 +29,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'verified'])->group(
     Route::get('/products/{product}/edit', [AdminProductController::class, 'edit'])->name('products.edit');
     Route::put('/products/{product}', [AdminProductController::class, 'update'])->name('products.update');
     Route::delete('/products/{product}', [AdminProductController::class, 'destroy'])->name('products.destroy');
+    Route::post('/products/bulk-visibility', [AdminProductController::class, 'bulkVisibility'])->name('products.bulk-visibility');
 
     // Orders
     Route::get('/orders', [AdminOrderController::class, 'index'])->name('orders.index');
@@ -36,6 +38,10 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'verified'])->group(
 
     // Financials
     Route::get('/financials', [AdminOrderController::class, 'financials'])->name('financials');
+
+    // Site settings
+    Route::post('/settings/hero-image', [SettingsController::class, 'updateHeroImage'])->name('settings.hero-image');
+    Route::delete('/settings/hero-image', [SettingsController::class, 'removeHeroImage'])->name('settings.hero-image.remove');
 
     // Notifications API
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');

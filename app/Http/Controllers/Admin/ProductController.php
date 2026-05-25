@@ -119,20 +119,31 @@ class ProductController extends Controller
     public function import(Request $request): RedirectResponse
     {
         $request->validate([
-            'csv_file' => ['required', 'file', 'mimes:csv,txt', 'max:5120'],
+            'csv_file' => ['required', 'file', 'mimes:csv,txt', 'max:10240'],
         ]);
 
         $file = $request->file('csv_file');
         $handle = fopen($file->getRealPath(), 'r');
 
-        $headers = array_map('trim', fgetcsv($handle) ?: []);
+        // Strip UTF-8 BOM if present
+        $bom = fread($handle, 3);
+        if ($bom !== "\xEF\xBB\xBF") {
+            rewind($handle);
+        }
 
-        $required = ['name', 'price'];
-        foreach ($required as $col) {
-            if (!in_array($col, $headers)) {
-                fclose($handle);
-                return back()->with('error', "CSV is missing required column: {$col}");
-            }
+        $rawHeaders = fgetcsv($handle) ?: [];
+        $headers = array_map('trim', $rawHeaders);
+
+        // Detect WooCommerce export vs simple format
+        $isWoo = in_array('Product Name', $headers) && in_array('Product SKU', $headers);
+
+        $nameCol  = $isWoo ? 'Product Name'  : 'name';
+        $skuCol   = $isWoo ? 'Product SKU'   : 'sku';
+        $priceCol = $isWoo ? 'Price'          : 'price';
+
+        if (!in_array($nameCol, $headers) || !in_array($priceCol, $headers)) {
+            fclose($handle);
+            return back()->with('error', 'CSV is missing required columns (Product Name / Price).');
         }
 
         $created = 0;
@@ -140,46 +151,98 @@ class ProductController extends Controller
         $skipped = 0;
 
         while (($row = fgetcsv($handle)) !== false) {
-            if (count($row) < count($headers)) {
+            // Pad short rows so array_combine never crashes
+            $row = array_pad(array_map('trim', $row), count($headers), '');
+            $data = array_combine($headers, $row);
+
+            $name = $data[$nameCol] ?? '';
+            if (empty($name)) {
                 $skipped++;
                 continue;
             }
 
-            $data = array_combine($headers, array_map('trim', $row));
-
-            if (empty($data['name']) || !is_numeric($data['price'] ?? '')) {
+            // Price: WooCommerce may export ranges like "52.00-74.00" — take lower bound
+            $rawPrice = $data[$priceCol] ?? '';
+            $price = (float) strtok($rawPrice, '-');
+            if ($price <= 0) {
                 $skipped++;
                 continue;
             }
 
-            $sku = !empty($data['sku']) ? $data['sku'] : null;
+            $sku = !empty($data[$skuCol]) ? $data[$skuCol] : null;
             $product = $sku ? Product::where('sku', $sku)->first() : null;
 
-            $isActive = !isset($data['is_active']) || in_array(strtolower($data['is_active']), ['1', 'true', 'yes', '']);
-            $stockStatus = in_array($data['stock_status'] ?? '', ['in_stock', 'out_of_stock'])
-                ? $data['stock_status']
-                : 'in_stock';
+            if ($isWoo) {
+                // Sale price: skip when empty or identical to price
+                $rawSale = $data['Sale Price'] ?? '';
+                $salePrice = strlen($rawSale) > 0 ? (float) $rawSale : null;
+                if ($salePrice !== null && $salePrice >= $price) {
+                    $salePrice = null;
+                }
 
-            $payload = [
-                'name'           => $data['name'],
-                'sku'            => $sku,
-                'description'    => $data['description'] ?? null,
-                'excerpt'        => $data['excerpt'] ?? null,
-                'price'          => (float) $data['price'],
-                'sale_price'     => isset($data['sale_price']) && is_numeric($data['sale_price']) ? (float) $data['sale_price'] : null,
-                'cost_price'     => isset($data['cost_price']) && is_numeric($data['cost_price']) ? (float) $data['cost_price'] : null,
-                'category'       => $data['category'] ?? null,
-                'stock_status'   => $stockStatus,
-                'quantity'       => isset($data['quantity']) && is_numeric($data['quantity']) ? (int) $data['quantity'] : null,
-                'featured_image' => $data['featured_image'] ?? null,
-                'is_active'      => $isActive,
-            ];
+                // Description / excerpt: strip HTML tags
+                $description = !empty($data['Description']) ? strip_tags(html_entity_decode($data['Description'], ENT_QUOTES | ENT_HTML5, 'UTF-8')) : null;
+                $excerpt     = !empty($data['Excerpt'])     ? strip_tags(html_entity_decode($data['Excerpt'],     ENT_QUOTES | ENT_HTML5, 'UTF-8')) : null;
+
+                // Category: take first segment before "|", strip sub-categories after ">", decode HTML entities
+                $rawCategory = $data['Category'] ?? '';
+                $category = null;
+                if (!empty($rawCategory)) {
+                    $firstSegment = explode('|', $rawCategory)[0];
+                    $firstSegment = explode('>', $firstSegment)[0];
+                    $category = html_entity_decode(trim($firstSegment), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+                    if (empty($category)) $category = null;
+                }
+
+                // Stock status
+                $rawStock = strtolower($data['Stock Status'] ?? '');
+                $stockStatus = str_contains($rawStock, 'in stock') ? 'in_stock' : 'out_of_stock';
+
+                // Quantity
+                $rawQty = $data['Quantity'] ?? '';
+                $quantity = is_numeric($rawQty) ? (int) $rawQty : null;
+
+                // Active flag
+                $isActive = strtolower($data['Product Published'] ?? '') === 'publish';
+
+                $payload = [
+                    'name'           => $name,
+                    'sku'            => $sku,
+                    'description'    => $description,
+                    'excerpt'        => $excerpt,
+                    'price'          => $price,
+                    'sale_price'     => $salePrice,
+                    'category'       => $category,
+                    'stock_status'   => $stockStatus,
+                    'quantity'       => $quantity,
+                    'is_active'      => $isActive,
+                ];
+            } else {
+                $isActive = !isset($data['is_active']) || in_array(strtolower($data['is_active']), ['1', 'true', 'yes', '']);
+                $rawStock = $data['stock_status'] ?? '';
+                $stockStatus = in_array($rawStock, ['in_stock', 'out_of_stock']) ? $rawStock : 'in_stock';
+
+                $payload = [
+                    'name'           => $name,
+                    'sku'            => $sku,
+                    'description'    => $data['description'] ?? null,
+                    'excerpt'        => $data['excerpt'] ?? null,
+                    'price'          => $price,
+                    'sale_price'     => isset($data['sale_price']) && is_numeric($data['sale_price']) ? (float) $data['sale_price'] : null,
+                    'cost_price'     => isset($data['cost_price']) && is_numeric($data['cost_price']) ? (float) $data['cost_price'] : null,
+                    'category'       => $data['category'] ?? null,
+                    'stock_status'   => $stockStatus,
+                    'quantity'       => isset($data['quantity']) && is_numeric($data['quantity']) ? (int) $data['quantity'] : null,
+                    'featured_image' => $data['featured_image'] ?? null,
+                    'is_active'      => $isActive,
+                ];
+            }
 
             if ($product) {
                 $product->update($payload);
                 $updated++;
             } else {
-                $payload['slug'] = $this->uniqueSlug($data['name']);
+                $payload['slug'] = $this->uniqueSlug($name);
                 Product::create($payload);
                 $created++;
             }

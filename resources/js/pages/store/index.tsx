@@ -1689,9 +1689,18 @@ export default function StoreIndex({ products, hero_image, hero_content }: Props
     const [dark, setDark] = useState<boolean>(() => {
         try { return localStorage.getItem('tbk_dark') !== 'false'; } catch { return true; }
     });
-    const [route, setRoute] = useState('home');
-    const [productId, setProductId] = useState<number | null>(null);
-    const [initialCat, setInitialCat] = useState<string | null>(null);
+    // Parse route from URL hash so refresh preserves location
+    const parseHash = () => {
+        const h = window.location.hash.slice(1); // e.g. "product/42", "collection/Stethoscopes", "home"
+        if (h.startsWith('product/')) return { route: 'product', productId: Number(h.split('/')[1]) || null, cat: null };
+        if (h.startsWith('collection')) return { route: 'collection', productId: null, cat: decodeURIComponent(h.split('/')[1] ?? '') || null };
+        if (h === 'how') return { route: 'how', productId: null, cat: null };
+        return { route: 'home', productId: null, cat: null };
+    };
+    const initial = parseHash();
+    const [route, setRoute] = useState(initial.route);
+    const [productId, setProductId] = useState<number | null>(initial.productId);
+    const [initialCat, setInitialCat] = useState<string | null>(initial.cat);
     const [cart, setCart] = useState<CartItem[]>(() => {
         try { return JSON.parse(localStorage.getItem('tbk_cart') ?? '[]') as CartItem[]; } catch { return []; }
     });
@@ -1742,6 +1751,11 @@ export default function StoreIndex({ products, hero_image, hero_content }: Props
         if (pid != null) setProductId(pid);
         if (cat !== undefined) setInitialCat(cat ?? null);
         setCartOpen(false);
+        // Write hash so refresh restores position
+        if (r === 'product' && pid != null) window.location.hash = `product/${pid}`;
+        else if (r === 'collection') window.location.hash = cat ? `collection/${encodeURIComponent(cat)}` : 'collection';
+        else if (r === 'how') window.location.hash = 'how';
+        else window.location.hash = '';
         window.scrollTo({ top: 0, behavior: 'instant' });
     }
 

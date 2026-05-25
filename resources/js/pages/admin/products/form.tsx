@@ -1,7 +1,7 @@
 import { Head, Link, useForm } from '@inertiajs/react';
 import { useRef, useState } from 'react';
 import AdminLayout from '@/layouts/admin-layout';
-import { ArrowLeft, Upload, X, Plus } from 'lucide-react';
+import { ArrowLeft, Upload, X, Plus, List } from 'lucide-react';
 
 interface Variant {
     value: string;
@@ -354,50 +354,16 @@ export default function ProductForm({ product, categories }: Props) {
                         </div>
                     </div>
                     {/* Variants */}
-                    <div className="p-8">
-                        <div className="flex items-center justify-between mb-6">
-                            <div>
-                                <h2 className="text-xs tracking-widest uppercase text-stone-400">Variants</h2>
-                                <p className="text-xs text-stone-400 mt-1">e.g. Black / Navy / Red — each with its own price and image.</p>
-                            </div>
-                            <button type="button" onClick={addVariant} className="flex items-center gap-1.5 text-xs text-stone-500 hover:text-stone-900 transition-colors border border-stone-200 px-3 py-1.5 hover:border-stone-400 shrink-0 ml-4">
-                                <Plus className="w-3.5 h-3.5" /> Add variant
-                            </button>
-                        </div>
-
-                        {data.variants.length === 0 && (
-                            <p className="text-sm text-stone-300 italic">No variants — product has a single price and image.</p>
-                        )}
-
-                        <div className="space-y-4">
-                            {data.variants.map((v, i) => (
-                                <VariantRow
-                                    key={i}
-                                    v={v}
-                                    i={i}
-                                    errors={errors as Record<string, string>}
-                                    onRemove={() => removeVariant(i)}
-                                    onText={(field, val) => setVariantText(i, field, val)}
-                                    onImage={file => setVariantImage(i, file)}
-                                    onClearImage={() => clearVariantImage(i)}
-                                />
-                            ))}
-                        </div>
-
-                        {data.variants.length > 0 && (
-                            <div className="mt-5 pt-5 border-t border-stone-50">
-                                <div className="text-xs text-stone-400 mb-2">Preview:</div>
-                                <div className="flex flex-wrap gap-2">
-                                    {data.variants.filter(v => v.value).map((v, i) => (
-                                        <span key={i} className="text-xs px-3 py-1.5 border border-stone-200 text-stone-600">
-                                            {v.value}
-                                            {v.price && <span className="text-stone-400 ml-1.5">JD {v.price}</span>}
-                                        </span>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-                    </div>
+                    <VariantsSection
+                        variants={data.variants}
+                        errors={errors as Record<string, string>}
+                        onAdd={addVariant}
+                        onRemove={removeVariant}
+                        onText={setVariantText}
+                        onImage={setVariantImage}
+                        onClearImage={clearVariantImage}
+                        onBulkAdd={(newVariants) => setData('variants', [...data.variants, ...newVariants])}
+                    />
                 </div>
 
                 <div className="flex gap-4 mt-6">
@@ -518,6 +484,121 @@ function VariantRow({ v, i, errors, onRemove, onText, onImage, onClearImage }: {
                     <X className="w-4 h-4" />
                 </button>
             </div>
+        </div>
+    );
+}
+
+function VariantsSection({ variants, errors, onAdd, onRemove, onText, onImage, onClearImage, onBulkAdd }: {
+    variants: Variant[];
+    errors: Record<string, string>;
+    onAdd: () => void;
+    onRemove: (i: number) => void;
+    onText: (i: number, field: 'value' | 'price', val: string) => void;
+    onImage: (i: number, file: File) => void;
+    onClearImage: (i: number) => void;
+    onBulkAdd: (variants: Variant[]) => void;
+}) {
+    const [bulkOpen, setBulkOpen] = useState(false);
+    const [bulkText, setBulkText] = useState('');
+    const [bulkPrice, setBulkPrice] = useState('');
+
+    function applyBulk() {
+        const lines = bulkText.split('\n').map(l => l.trim()).filter(Boolean);
+        const parsed: Variant[] = [];
+        for (const line of lines) {
+            // Support: "Label, price" or "Label" (uses shared price)
+            const comma = line.lastIndexOf(',');
+            let value = line;
+            let price = bulkPrice;
+            if (comma !== -1) {
+                const maybePx = line.slice(comma + 1).trim();
+                if (/^\d/.test(maybePx)) { value = line.slice(0, comma).trim(); price = maybePx; }
+            }
+            if (value) parsed.push({ value, price, image: null, current_image: null });
+        }
+        if (parsed.length) { onBulkAdd(parsed); setBulkText(''); setBulkPrice(''); setBulkOpen(false); }
+    }
+
+    return (
+        <div className="p-8">
+            <div className="flex items-center justify-between mb-6">
+                <div>
+                    <h2 className="text-xs tracking-widest uppercase text-stone-400">Variants</h2>
+                    <p className="text-xs text-stone-400 mt-1">e.g. Black / Navy / Red — each with its own price and image.</p>
+                </div>
+                <div className="flex items-center gap-2 ml-4">
+                    <button type="button" onClick={() => setBulkOpen(v => !v)}
+                        className="flex items-center gap-1.5 text-xs text-stone-500 hover:text-stone-900 transition-colors border border-stone-200 px-3 py-1.5 hover:border-stone-400">
+                        <List className="w-3.5 h-3.5" /> Bulk add
+                    </button>
+                    <button type="button" onClick={onAdd}
+                        className="flex items-center gap-1.5 text-xs text-stone-500 hover:text-stone-900 transition-colors border border-stone-200 px-3 py-1.5 hover:border-stone-400">
+                        <Plus className="w-3.5 h-3.5" /> Add one
+                    </button>
+                </div>
+            </div>
+
+            {bulkOpen && (
+                <div className="mb-6 p-5 border border-stone-200 bg-stone-50 space-y-3">
+                    <p className="text-xs text-stone-500 leading-relaxed">
+                        One variant per line. Format: <code className="bg-white border border-stone-200 px-1 rounded text-[11px]">Label, price</code> or just <code className="bg-white border border-stone-200 px-1 rounded text-[11px]">Label</code> (uses shared price below).
+                    </p>
+                    <textarea
+                        value={bulkText}
+                        onChange={e => setBulkText(e.target.value)}
+                        rows={5}
+                        placeholder={"Black, 15.00\nRed, 15.00\nNavy Blue, 17.00\nWhite"}
+                        className="w-full border border-stone-200 px-3 py-2 text-sm text-stone-900 focus:outline-none focus:border-stone-500 resize-none font-mono"
+                    />
+                    <div className="flex items-center gap-3">
+                        <div className="flex-1">
+                            <label className="block text-[11px] text-stone-400 mb-1">Shared price (used when no price in line)</label>
+                            <input type="number" step="0.01" min="0" value={bulkPrice} onChange={e => setBulkPrice(e.target.value)}
+                                placeholder="0.00"
+                                className="w-full border border-stone-200 px-3 py-2 text-sm text-stone-900 focus:outline-none focus:border-stone-500" />
+                        </div>
+                        <div className="flex gap-2 mt-5">
+                            <button type="button" onClick={applyBulk}
+                                className="bg-stone-900 text-white px-5 py-2 text-xs tracking-widest uppercase hover:bg-stone-700 transition-colors">
+                                Add
+                            </button>
+                            <button type="button" onClick={() => { setBulkOpen(false); setBulkText(''); setBulkPrice(''); }}
+                                className="px-4 py-2 text-xs tracking-widest uppercase border border-stone-200 text-stone-500 hover:border-stone-400 transition-colors">
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {variants.length === 0 && !bulkOpen && (
+                <p className="text-sm text-stone-300 italic">No variants — product has a single price and image.</p>
+            )}
+
+            <div className="space-y-4">
+                {variants.map((v, i) => (
+                    <VariantRow key={i} v={v} i={i} errors={errors}
+                        onRemove={() => onRemove(i)}
+                        onText={(field, val) => onText(i, field, val)}
+                        onImage={file => onImage(i, file)}
+                        onClearImage={() => onClearImage(i)}
+                    />
+                ))}
+            </div>
+
+            {variants.length > 0 && (
+                <div className="mt-5 pt-5 border-t border-stone-50">
+                    <div className="text-xs text-stone-400 mb-2">Preview:</div>
+                    <div className="flex flex-wrap gap-2">
+                        {variants.filter(v => v.value).map((v, i) => (
+                            <span key={i} className="text-xs px-3 py-1.5 border border-stone-200 text-stone-600">
+                                {v.value}
+                                {v.price && <span className="text-stone-400 ml-1.5">JD {v.price}</span>}
+                            </span>
+                        ))}
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

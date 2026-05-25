@@ -18,10 +18,11 @@ class ProductController extends Controller
         $query = Product::orderBy('category')->orderBy('name');
 
         if ($search = $request->input('search')) {
-            $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('sku', 'like', "%{$search}%")
-                  ->orWhere('category', 'like', "%{$search}%");
+            $lower = mb_strtolower($search);
+            $query->where(function ($q) use ($lower) {
+                $q->whereRaw('LOWER(name) LIKE ?', ["%{$lower}%"])
+                  ->orWhereRaw('LOWER(sku) LIKE ?', ["%{$lower}%"])
+                  ->orWhereRaw('LOWER(category) LIKE ?', ["%{$lower}%"]);
             });
         }
 

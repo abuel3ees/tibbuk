@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Storage;
@@ -20,7 +21,6 @@ class Product extends Model
         'cost_price' => 'decimal:2',
         'is_active' => 'boolean',
         'allows_engraving' => 'boolean',
-        'variants' => 'array',
     ];
 
     public function orderItems(): HasMany
@@ -38,5 +38,23 @@ class Product extends Model
         if (!$value) return null;
         if (str_starts_with($value, 'http')) return $value;
         return Storage::url($value);
+    }
+
+    protected function variants(): Attribute
+    {
+        return Attribute::make(
+            get: function ($value) {
+                if (!$value) return null;
+                $arr = is_string($value) ? json_decode($value, true) : (is_array($value) ? $value : null);
+                if (!$arr) return null;
+                return array_map(function ($v) {
+                    if (!empty($v['image']) && !str_starts_with($v['image'], 'http')) {
+                        $v['image'] = Storage::url($v['image']);
+                    }
+                    return $v;
+                }, $arr);
+            },
+            set: fn ($value) => is_array($value) ? json_encode($value) : $value,
+        );
     }
 }

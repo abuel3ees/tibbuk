@@ -1,9 +1,9 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { useState } from 'react';
-import { ArrowLeft, Trash2, MapPin, Phone, Mail, Facebook, FileText, Package } from 'lucide-react';
+import { ArrowLeft, Trash2, MapPin, Phone, Mail, Facebook, FileText, Package, Download } from 'lucide-react';
 import AdminLayout from '@/layouts/admin-layout';
 
-interface OrderItem { id: number; product_name: string; quantity: number; unit_price: string; cost_price: string | null; product: { id: number; name: string } | null }
+interface OrderItem { id: number; product_name: string; quantity: number; unit_price: string; cost_price: string | null; engraving_text: string | null; product: { id: number; name: string } | null }
 interface Order { id: number; customer_name: string; customer_phone: string; customer_email: string | null; customer_facebook: string | null; delivery_address: string; status: string; notes: string | null; total_amount: string; created_at: string; items: OrderItem[] }
 interface Props { order: Order }
 
@@ -14,6 +14,119 @@ const STATUS_STYLES: Record<string, string> = {
     cancelled:  'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400',
 };
 const statuses = ['pending', 'processing', 'delivered', 'cancelled'];
+
+function printReceipt(order: Order) {
+    const orderNo = String(order.id).padStart(5, '0');
+    const date = new Date(order.created_at).toLocaleString('en-JO', { dateStyle: 'long', timeStyle: 'short' });
+    const subtotal = order.items.reduce((s, i) => s + Number(i.unit_price) * i.quantity, 0);
+    const shipping = 3;
+    const total = subtotal + shipping;
+
+    const itemRows = order.items.map(i => `
+        <tr>
+            <td style="padding:10px 0;border-bottom:1px solid #eee;">
+                ${i.product_name}
+                ${i.engraving_text ? `<br><span style="font-size:11px;color:#888;font-style:italic;">✎ Engraving: ${i.engraving_text}</span>` : ''}
+            </td>
+            <td style="padding:10px 8px;border-bottom:1px solid #eee;text-align:center;">${i.quantity}</td>
+            <td style="padding:10px 0;border-bottom:1px solid #eee;text-align:right;font-family:monospace;">${Number(i.unit_price).toFixed(2)}</td>
+            <td style="padding:10px 0;border-bottom:1px solid #eee;text-align:right;font-family:monospace;font-weight:600;">${(Number(i.unit_price) * i.quantity).toFixed(2)}</td>
+        </tr>`).join('');
+
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Receipt — Order #${orderNo}</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 13px; color: #111; background: #fff; padding: 48px; max-width: 680px; margin: 0 auto; }
+  .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 36px; padding-bottom: 24px; border-bottom: 2px solid #111; }
+  .brand { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
+  .brand span { font-weight: 300; margin-left: 4px; color: #555; }
+  .order-meta { text-align: right; }
+  .order-meta .order-no { font-size: 20px; font-weight: 300; font-family: monospace; }
+  .order-meta .order-date { font-size: 11px; color: #888; margin-top: 4px; }
+  .status { display: inline-block; margin-top: 6px; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; padding: 3px 8px; border-radius: 4px; background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+  .section-title { font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; color: #888; font-weight: 600; margin-bottom: 12px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 32px; }
+  .block { background: #f9f9f9; border-radius: 8px; padding: 16px; }
+  .block p { font-size: 13px; line-height: 1.6; color: #333; }
+  .block .name { font-weight: 700; font-size: 14px; color: #111; margin-bottom: 8px; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 0; }
+  thead th { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #888; font-weight: 600; padding: 0 0 10px; border-bottom: 2px solid #eee; text-align: left; }
+  thead th:last-child, thead th:nth-child(3), thead th:nth-child(2) { text-align: right; }
+  thead th:nth-child(2) { text-align: center; }
+  .totals { margin-top: 16px; border-top: 2px solid #111; padding-top: 16px; }
+  .totals-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 13px; color: #555; }
+  .totals-row.big { font-size: 18px; font-weight: 700; color: #111; margin-top: 8px; padding-top: 8px; border-top: 1px solid #eee; }
+  .notes-block { margin-top: 24px; background: #fffbf0; border: 1px solid #fde68a; border-radius: 8px; padding: 14px 16px; }
+  .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee; display: flex; justify-content: space-between; font-size: 11px; color: #aaa; }
+  @media print {
+    body { padding: 24px; }
+    @page { margin: 12mm; }
+  }
+</style>
+</head>
+<body>
+  <div class="header">
+    <div class="brand">Tibbuk <span>طِبّك</span></div>
+    <div class="order-meta">
+      <div class="order-no">Order #${orderNo}</div>
+      <div class="order-date">${date}</div>
+      <div class="status">${order.status}</div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="block">
+      <div class="section-title">Customer</div>
+      <div class="name">${order.customer_name}</div>
+      <p>📞 ${order.customer_phone}</p>
+      ${order.customer_email ? `<p>✉ ${order.customer_email}</p>` : ''}
+      ${order.customer_facebook ? `<p>🔗 ${order.customer_facebook}</p>` : ''}
+    </div>
+    <div class="block">
+      <div class="section-title">Delivery Address</div>
+      <p style="margin-top:4px;">${order.delivery_address}</p>
+    </div>
+  </div>
+
+  <div class="section-title">Order Items</div>
+  <table>
+    <thead>
+      <tr>
+        <th>Product</th>
+        <th>Qty</th>
+        <th>Unit Price</th>
+        <th>Subtotal</th>
+      </tr>
+    </thead>
+    <tbody>${itemRows}</tbody>
+  </table>
+
+  <div class="totals">
+    <div class="totals-row"><span>Subtotal</span><span style="font-family:monospace;">${subtotal.toFixed(2)} JOD</span></div>
+    <div class="totals-row"><span>Shipping</span><span style="font-family:monospace;">${shipping.toFixed(2)} JOD</span></div>
+    <div class="totals-row big"><span>Total</span><span style="font-family:monospace;">${total.toFixed(2)} JOD</span></div>
+  </div>
+
+  ${order.notes ? `<div class="notes-block"><div class="section-title" style="margin-bottom:6px;">Order Notes</div><p>${order.notes}</p></div>` : ''}
+
+  <div class="footer">
+    <span>Tibbuk — Medical equipment for Jordan's medical students</span>
+    <span>Generated ${new Date().toLocaleDateString('en-JO')}</span>
+  </div>
+</body>
+</html>`;
+
+    const w = window.open('', '_blank', 'width=750,height=900');
+    if (!w) return;
+    w.document.write(html);
+    w.document.close();
+    w.focus();
+    setTimeout(() => w.print(), 400);
+}
 
 export default function OrderShow({ order }: Props) {
     const [updating, setUpdating] = useState(false);
@@ -51,6 +164,10 @@ export default function OrderShow({ order }: Props) {
                             className={`text-[10px] tracking-wider uppercase px-3.5 py-2.5 rounded-lg font-semibold cursor-pointer focus:outline-none border-0 transition-all disabled:opacity-50 ${STATUS_STYLES[order.status] ?? ''}`}>
                             {statuses.map(s => <option key={s} value={s}>{s}</option>)}
                         </select>
+                        <button onClick={() => printReceipt(order)}
+                            className="flex items-center gap-2 px-3.5 py-2.5 rounded-lg text-xs font-semibold border border-[#E8E1D0] dark:border-[#1C2822] text-[#16201D] dark:text-[#EAE6DE] hover:bg-[#F2EDE0] dark:hover:bg-[#141C19] transition-all">
+                            <Download className="w-3.5 h-3.5" /> Export PDF
+                        </button>
                         <button onClick={deleteOrder}
                             className="flex items-center gap-2 px-3.5 py-2.5 rounded-lg text-xs font-semibold border border-red-200 dark:border-red-800/50 text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 hover:border-red-400 dark:hover:border-red-600 transition-all">
                             <Trash2 className="w-3.5 h-3.5" /> Delete

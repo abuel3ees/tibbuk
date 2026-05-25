@@ -59,7 +59,7 @@ class ProductController extends Controller
         $validated['slug'] = $this->uniqueSlug($validated['name']);
 
         if ($request->hasFile('featured_image')) {
-            $validated['featured_image'] = $request->file('featured_image')->store('products', 'public');
+            $validated['featured_image'] = $request->file('featured_image')->store('products', 'spaces');
         }
 
         $variants = $validated['variants'] ?? [];
@@ -96,9 +96,9 @@ class ProductController extends Controller
         if ($request->hasFile('featured_image')) {
             $old = $product->getRawOriginal('featured_image');
             if ($old && !str_starts_with($old, 'http')) {
-                Storage::disk('public')->delete($old);
+                Storage::disk('spaces')->delete($old);
             }
-            $validated['featured_image'] = $request->file('featured_image')->store('products', 'public');
+            $validated['featured_image'] = $request->file('featured_image')->store('products', 'spaces');
         } else {
             unset($validated['featured_image']);
         }
@@ -115,7 +115,7 @@ class ProductController extends Controller
                 if ($request->hasFile("variants.{$i}.image")) {
                     $oldImage = isset($existing[$i]) ? ($existing[$i]['image'] ?? null) : null;
                     if ($oldImage && !str_starts_with($oldImage, 'http')) {
-                        Storage::disk('public')->delete($oldImage);
+                        Storage::disk('spaces')->delete($oldImage);
                     }
                 }
             }
@@ -136,7 +136,7 @@ class ProductController extends Controller
     {
         $raw = $product->getRawOriginal('featured_image');
         if ($raw && !str_starts_with($raw, 'http')) {
-            Storage::disk('public')->delete($raw);
+            Storage::disk('spaces')->delete($raw);
         }
         $product->delete();
 
@@ -332,7 +332,7 @@ class ProductController extends Controller
         $pending = [];
         foreach ($variants as $i => &$variant) {
             if ($request->hasFile("variants.{$i}.image")) {
-                $temp = $request->file("variants.{$i}.image")->store('products/variants/pending', 'public');
+                $temp = $request->file("variants.{$i}.image")->store('products/variants/pending', 'spaces');
                 $variant['image'] = $temp;
                 $pending[$i] = $temp;
             } else {
@@ -353,9 +353,9 @@ class ProductController extends Controller
                 // Delete old variant image if stored locally
                 $oldImage = isset($existing[$i]) ? ($existing[$i]['image'] ?? null) : null;
                 if ($oldImage && !str_starts_with($oldImage, 'http')) {
-                    Storage::disk('public')->delete($oldImage);
+                    Storage::disk('spaces')->delete($oldImage);
                 }
-                $variant['image'] = $request->file("variants.{$i}.image")->store('products/variants', 'public');
+                $variant['image'] = $request->file("variants.{$i}.image")->store('products/variants', 'spaces');
             } else {
                 // The form sends back current_image which may already be a /storage/ URL
                 // (because the model accessor transforms raw paths to URLs for the frontend).
@@ -373,9 +373,13 @@ class ProductController extends Controller
     private function toRawPath(?string $path): ?string
     {
         if (!$path) return null;
-        // Strip /storage/ prefix added by Storage::url() so we store the raw disk path
         if (str_starts_with($path, '/storage/')) {
             return ltrim(substr($path, strlen('/storage/')), '/');
+        }
+        // Strip full Spaces/CDN URL — keep only the relative object key
+        if (str_starts_with($path, 'http')) {
+            $parsed = parse_url($path, PHP_URL_PATH);
+            return $parsed ? ltrim($parsed, '/') : $path;
         }
         return $path;
     }

@@ -911,36 +911,40 @@ function CheckoutModal({ open, onClose, cart, setCart, products, lang }: {
                     <h2>{t.title}</h2>
                     <button className="drawer__close" onClick={onClose} aria-label="Close"><CloseIcon /></button>
                 </div>
-                <div className="checkout-modal__body">
-                    <form onSubmit={handleSubmit}>
-                        {[
-                            { key: 'customer_name',     label: t.name,     placeholder: t.namePlaceholder,     type: 'text' },
-                            { key: 'customer_phone',    label: t.phone,    placeholder: t.phonePlaceholder,    type: 'tel' },
-                            { key: 'customer_email',    label: t.email,    placeholder: t.emailPlaceholder,    type: 'email' },
-                            { key: 'customer_facebook', label: t.facebook, placeholder: t.facebookPlaceholder, type: 'url' },
-                        ].map(({ key, label, placeholder, type }) => (
-                            <div className="form-field" key={key}>
-                                <label>{label}</label>
-                                <input
-                                    type={type}
-                                    placeholder={placeholder}
-                                    value={form[key as keyof typeof form]}
-                                    onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
-                                />
-                                {errors[key] && <div className="error">{errors[key]}</div>}
-                            </div>
-                        ))}
+                <form onSubmit={handleSubmit} className="checkout-modal__body">
+                    {/* Left col — contact fields */}
+                    <div className="checkout-modal__fields">
+                        <div className="checkout-fields-grid">
+                            {[
+                                { key: 'customer_name',     label: t.name,     placeholder: t.namePlaceholder,     type: 'text' },
+                                { key: 'customer_phone',    label: t.phone,    placeholder: t.phonePlaceholder,    type: 'tel' },
+                                { key: 'customer_email',    label: t.email,    placeholder: t.emailPlaceholder,    type: 'email' },
+                                { key: 'customer_facebook', label: t.facebook, placeholder: t.facebookPlaceholder, type: 'text' },
+                            ].map(({ key, label, placeholder, type }) => (
+                                <div className="form-field" key={key}>
+                                    <label>{label}</label>
+                                    <input
+                                        type={type}
+                                        placeholder={placeholder}
+                                        value={form[key as keyof typeof form]}
+                                        onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
+                                    />
+                                    {errors[key] && <div className="error">{errors[key]}</div>}
+                                </div>
+                            ))}
+                        </div>
+
                         <div className="form-field">
                             <label>{t.address}</label>
                             <textarea
                                 placeholder={t.addressPlaceholder}
-                                rows={3}
+                                rows={2}
                                 value={form.delivery_address}
                                 onChange={e => setForm(f => ({ ...f, delivery_address: e.target.value }))}
                             />
                             {errors.delivery_address && <div className="error">{errors.delivery_address}</div>}
                         </div>
-                        <div className="form-field">
+                        <div className="form-field" style={{ marginBottom: 0 }}>
                             <label>{t.notes}</label>
                             <textarea
                                 placeholder={t.notesPlaceholder}
@@ -951,7 +955,7 @@ function CheckoutModal({ open, onClose, cart, setCart, products, lang }: {
                         </div>
 
                         {items.some(l => l.product.allows_engraving) && (
-                            <div className="form-field">
+                            <div className="form-field" style={{ marginTop: 16, marginBottom: 0 }}>
                                 {items.filter(l => l.product.allows_engraving).map(l => {
                                     const key = `${l.id}-${l.variant}`;
                                     return (
@@ -975,8 +979,11 @@ function CheckoutModal({ open, onClose, cart, setCart, products, lang }: {
                                 })}
                             </div>
                         )}
+                    </div>
 
-                        <div className="order-summary">
+                    {/* Right col — order summary + submit */}
+                    <div className="checkout-modal__summary">
+                        <div className="order-summary" style={{ borderTop: 'none', paddingTop: 0, marginTop: 0 }}>
                             <div className="order-summary__title">{t.summary}</div>
                             {items.map(l => (
                                 <div className="order-summary__line" key={`${l.id}-${l.variant}`}>
@@ -996,11 +1003,11 @@ function CheckoutModal({ open, onClose, cart, setCart, products, lang }: {
 
                         {errors.items && <p style={{ color: 'var(--warn)', fontSize: 13, marginBottom: 12 }}>{errors.items}</p>}
 
-                        <button type="submit" className="btn btn--full btn--lg" disabled={submitting} style={{ marginTop: 8 }}>
+                        <button type="submit" className="btn btn--full btn--lg" disabled={submitting} style={{ marginTop: 'auto' }}>
                             {submitting ? t.submitting : t.submit}
                         </button>
-                    </form>
-                </div>
+                    </div>
+                </form>
             </div>
         </div>
     );
@@ -1192,8 +1199,10 @@ function CollectionPage({ lang, products, navigate, addToCart, initialCat }: {
     const [sort, setSort] = useState<'default' | 'price_asc' | 'price_desc' | 'name'>('default');
     const [inStockOnly, setInStockOnly] = useState(false);
     const [search, setSearch] = useState('');
+    const [page, setPage] = useState(1);
+    const PER_PAGE = 12;
 
-    useEffect(() => { setFilter(initialCat); }, [initialCat]);
+    useEffect(() => { setFilter(initialCat); setPage(1); }, [initialCat]);
 
     const filtered = useMemo(() => {
         let list = filter ? products.filter(p => {
@@ -1214,6 +1223,18 @@ function CollectionPage({ lang, products, navigate, addToCart, initialCat }: {
         else if (sort === 'name') list = [...list].sort((a, b) => a.name.localeCompare(b.name));
         return list;
     }, [products, filter, sort, inStockOnly, search]);
+
+    const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
+    const safePage = Math.min(page, totalPages);
+    const paginated = filtered.slice((safePage - 1) * PER_PAGE, safePage * PER_PAGE);
+
+    function goToPage(p: number) {
+        setPage(p);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // Reset page when filters change
+    useEffect(() => { setPage(1); }, [filter, sort, inStockOnly, search]);
 
     const allLabel = lang === 'en' ? 'All' : 'الكلّ';
 
@@ -1313,7 +1334,7 @@ function CollectionPage({ lang, products, navigate, addToCart, initialCat }: {
                             </div>
                     <div className="col-grid">
                         {filtered.length > 0
-                            ? filtered.map(p => (
+                            ? paginated.map(p => (
                                 <ProductCard key={p.id} product={p} lang={lang} onAdd={prod => addToCart(prod.id)} onNavigate={prod => navigate('product', prod.id)} />
                             ))
                             : (
@@ -1323,6 +1344,76 @@ function CollectionPage({ lang, products, navigate, addToCart, initialCat }: {
                             )
                         }
                     </div>
+
+                    {totalPages > 1 && (
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 40, flexWrap: 'wrap' }}>
+                            <button
+                                onClick={() => goToPage(safePage - 1)}
+                                disabled={safePage === 1}
+                                style={{
+                                    padding: '8px 14px', fontSize: 13, border: '1px solid var(--rule)',
+                                    borderRadius: 'var(--tbk-radius)', background: 'var(--paper)', color: 'var(--ink)',
+                                    cursor: safePage === 1 ? 'not-allowed' : 'pointer', opacity: safePage === 1 ? 0.35 : 1,
+                                    fontFamily: 'inherit', transition: 'all 0.12s',
+                                }}
+                            >
+                                {lang === 'en' ? '← Prev' : 'السابق →'}
+                            </button>
+
+                            {Array.from({ length: totalPages }, (_, i) => i + 1)
+                                .filter(n => n === 1 || n === totalPages || Math.abs(n - safePage) <= 1)
+                                .reduce<(number | '…')[]>((acc, n, idx, arr) => {
+                                    if (idx > 0 && n - (arr[idx - 1] as number) > 1) acc.push('…');
+                                    acc.push(n);
+                                    return acc;
+                                }, [])
+                                .map((n, i) =>
+                                    n === '…'
+                                        ? <span key={`ellipsis-${i}`} style={{ padding: '8px 4px', fontSize: 13, color: 'var(--ink-mute)' }}>…</span>
+                                        : (
+                                            <button
+                                                key={n}
+                                                onClick={() => goToPage(n as number)}
+                                                style={{
+                                                    padding: '8px 13px', fontSize: 13,
+                                                    border: safePage === n ? '1px solid var(--ink)' : '1px solid var(--rule)',
+                                                    borderRadius: 'var(--tbk-radius)',
+                                                    background: safePage === n ? 'var(--ink)' : 'var(--paper)',
+                                                    color: safePage === n ? 'var(--paper)' : 'var(--ink)',
+                                                    cursor: 'pointer', fontFamily: 'inherit',
+                                                    fontWeight: safePage === n ? 600 : 400,
+                                                    transition: 'all 0.12s',
+                                                }}
+                                            >
+                                                {n}
+                                            </button>
+                                        )
+                                )
+                            }
+
+                            <button
+                                onClick={() => goToPage(safePage + 1)}
+                                disabled={safePage === totalPages}
+                                style={{
+                                    padding: '8px 14px', fontSize: 13, border: '1px solid var(--rule)',
+                                    borderRadius: 'var(--tbk-radius)', background: 'var(--paper)', color: 'var(--ink)',
+                                    cursor: safePage === totalPages ? 'not-allowed' : 'pointer', opacity: safePage === totalPages ? 0.35 : 1,
+                                    fontFamily: 'inherit', transition: 'all 0.12s',
+                                }}
+                            >
+                                {lang === 'en' ? 'Next →' : '← التالي'}
+                            </button>
+                        </div>
+                    )}
+
+                    {filtered.length > 0 && (
+                        <div style={{ textAlign: 'center', marginTop: 12, fontSize: 12, color: 'var(--ink-mute)' }}>
+                            {lang === 'en'
+                                ? `Showing ${(safePage - 1) * PER_PAGE + 1}–${Math.min(safePage * PER_PAGE, filtered.length)} of ${filtered.length}`
+                                : `عرض ${(safePage - 1) * PER_PAGE + 1}–${Math.min(safePage * PER_PAGE, filtered.length)} من ${filtered.length}`
+                            }
+                        </div>
+                    )}
                         </div>{/* /col-main */}
                     </div>{/* /col-layout */}
                 </div>{/* /wrap */}

@@ -18,10 +18,10 @@ class SettingsController extends Controller
 
         $old = Setting::get('hero_image');
         if ($old && !str_starts_with($old, 'http')) {
-            Storage::disk('public')->delete($old);
+            Storage::disk('spaces')->delete($old);
         }
 
-        $path = $request->file('hero_image')->store('settings', 'public');
+        $path = $request->file('hero_image')->store('settings', 'spaces');
         Setting::set('hero_image', $path);
 
         return back()->with('success', 'Hero image updated.');
@@ -49,7 +49,7 @@ class SettingsController extends Controller
     {
         $old = Setting::get('hero_image');
         if ($old && !str_starts_with($old, 'http')) {
-            Storage::disk('public')->delete($old);
+            Storage::disk('spaces')->delete($old);
         }
         Setting::set('hero_image', null);
 

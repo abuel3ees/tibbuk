@@ -22,7 +22,7 @@ class ProcessVariantImages implements ShouldQueue
 
         if (!$product) {
             foreach ($this->pendingPaths as $path) {
-                Storage::disk('public')->delete($path);
+                Storage::disk('spaces')->delete($path);
             }
             return;
         }
@@ -31,10 +31,10 @@ class ProcessVariantImages implements ShouldQueue
         $variants = $raw ? json_decode($raw, true) : [];
 
         foreach ($this->pendingPaths as $i => $tempPath) {
-            if (!Storage::disk('public')->exists($tempPath)) continue;
+            if (!Storage::disk('spaces')->exists($tempPath)) continue;
 
             $finalPath = 'products/variants/' . basename($tempPath);
-            Storage::disk('public')->move($tempPath, $finalPath);
+            Storage::disk('spaces')->move($tempPath, $finalPath);
 
             if (isset($variants[$i])) {
                 $variants[$i]['image'] = $finalPath;

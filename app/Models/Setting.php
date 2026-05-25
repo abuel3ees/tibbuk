@@ -28,7 +28,7 @@ class Setting extends Model
         $path = static::get('hero_image');
         if (!$path) return null;
         if (str_starts_with($path, 'http')) return $path;
-        return Storage::url($path);
+        return Storage::disk('spaces')->url($path);
     }
 
     public static function heroContent(): array

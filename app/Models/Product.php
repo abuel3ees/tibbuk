@@ -37,7 +37,7 @@ class Product extends Model
     {
         if (!$value) return null;
         if ($this->isAlreadyUrl($value)) return $value;
-        return Storage::url($value);
+        return Storage::disk('spaces')->url($value);
     }
 
     protected function variants(): Attribute
@@ -49,7 +49,7 @@ class Product extends Model
                 if (!$arr) return null;
                 return array_map(function ($v) {
                     if (!empty($v['image']) && !$this->isAlreadyUrl($v['image'])) {
-                        $v['image'] = Storage::url($v['image']);
+                        $v['image'] = Storage::disk('spaces')->url($v['image']);
                     }
                     return $v;
                 }, $arr);
@@ -60,7 +60,6 @@ class Product extends Model
 
     private function isAlreadyUrl(string $value): bool
     {
-        return str_starts_with($value, 'http')
-            || str_starts_with($value, '/storage/');
+        return str_starts_with($value, 'http');
     }
 }

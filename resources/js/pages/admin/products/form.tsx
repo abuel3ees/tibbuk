@@ -318,7 +318,7 @@ export default function ProductForm({ product, categories }: Props) {
                                 >
                                     <Upload className="w-6 h-6 mx-auto mb-2 text-stone-300" />
                                     <p className="text-sm text-stone-400">Drop an image or click to browse</p>
-                                    <p className="text-xs text-stone-300 mt-1">JPG, PNG, WebP — max 4 MB</p>
+                                    <p className="text-xs text-stone-300 mt-1">JPG, PNG, WebP — max 20 MB</p>
                                 </div>
                             )}
 

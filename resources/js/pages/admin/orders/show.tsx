@@ -1,6 +1,6 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { useState } from 'react';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Trash2 } from 'lucide-react';
 import AdminLayout from '@/layouts/admin-layout';
 
 interface OrderItem {
@@ -42,6 +42,11 @@ const statuses = ['pending', 'processing', 'delivered', 'cancelled'];
 export default function OrderShow({ order }: Props) {
     const [updating, setUpdating] = useState(false);
 
+    function deleteOrder() {
+        if (!confirm(`Delete order #${String(order.id).padStart(5, '0')}? This cannot be undone.`)) return;
+        router.delete(`/admin/orders/${order.id}`);
+    }
+
     function updateStatus(status: string) {
         setUpdating(true);
         router.patch(`/admin/orders/${order.id}/status`, { status }, {
@@ -76,6 +81,12 @@ export default function OrderShow({ order }: Props) {
                         >
                             {statuses.map(s => <option key={s} value={s}>{s}</option>)}
                         </select>
+                        <button
+                            onClick={deleteOrder}
+                            className="flex items-center gap-1.5 px-3 py-2 text-xs tracking-widest uppercase border border-red-200 text-red-500 hover:bg-red-50 hover:border-red-400 transition-colors"
+                        >
+                            <Trash2 className="w-3.5 h-3.5" /> Delete
+                        </button>
                     </div>
                 </div>
             </div>

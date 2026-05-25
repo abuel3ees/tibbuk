@@ -40,6 +40,14 @@ class OrderController extends Controller
         return back()->with('success', 'Order status updated.');
     }
 
+    public function destroy(Order $order): RedirectResponse
+    {
+        $order->items()->delete();
+        $order->delete();
+
+        return redirect()->route('admin.orders.index')->with('success', 'Order deleted.');
+    }
+
     public function financials(): Response
     {
         $deliveredOrders = Order::with('items')

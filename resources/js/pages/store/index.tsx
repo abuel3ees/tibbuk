@@ -406,9 +406,18 @@ function MetaStrip({ t }: { t: typeof COPY.en }) {
 }
 
 // ---- HEADER ----
-function Header({ lang, setLang, route, navigate, cartCount, openCart, openSearch }: {
+function SunIcon() {
+    return <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="4.22" y1="4.22" x2="6.34" y2="6.34"/><line x1="17.66" y1="17.66" x2="19.78" y2="19.78"/><line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/><line x1="4.22" y1="19.78" x2="6.34" y2="17.66"/><line x1="17.66" y1="6.34" x2="19.78" y2="4.22"/></svg>;
+}
+function MoonIcon() {
+    return <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 12.79A9 9 0 1 1 11.21 3a7 7 0 0 0 9.79 9.79z"/></svg>;
+}
+
+function Header({ lang, setLang, dark, setDark, route, navigate, cartCount, openCart, openSearch }: {
     lang: Lang;
     setLang: (l: Lang) => void;
+    dark: boolean;
+    setDark: (d: boolean) => void;
     route: string;
     navigate: (r: string, pid?: number | null, cat?: string | null) => void;
     cartCount: number;
@@ -434,6 +443,9 @@ function Header({ lang, setLang, route, navigate, cartCount, openCart, openSearc
                         <button className={lang === 'en' ? 'on' : ''} onClick={() => setLang('en')} aria-pressed={lang === 'en'}>EN</button>
                         <button className={lang === 'ar' ? 'on' : ''} onClick={() => setLang('ar')} aria-pressed={lang === 'ar'}>ع</button>
                     </div>
+                    <button className="icon-btn" aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'} onClick={() => setDark(!dark)}>
+                        {dark ? <SunIcon /> : <MoonIcon />}
+                    </button>
                     <button className="icon-btn" aria-label={t.util.search} onClick={openSearch}><SearchIcon /></button>
                     <button className="icon-btn" aria-label={`${t.util.cart} (${cartCount})`} onClick={openCart}>
                         <BagIcon />
@@ -848,6 +860,9 @@ function CheckoutModal({ open, onClose, cart, products, lang }: {
         } else if (!validatePhone(form.customer_phone)) {
             errs.customer_phone = lang === 'en' ? 'Enter a valid Jordanian phone number (e.g. 07XXXXXXXX).' : 'أدخل رقم هاتف أردني صحيح (مثال: 07XXXXXXXX).';
         }
+        if (!form.customer_email.trim()) errs.customer_email = lang === 'en' ? 'Email is required.' : 'البريد الإلكتروني مطلوب.';
+        else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.customer_email)) errs.customer_email = lang === 'en' ? 'Enter a valid email.' : 'أدخل بريدًا إلكترونيًا صحيحًا.';
+        if (!form.customer_facebook.trim()) errs.customer_facebook = lang === 'en' ? 'Facebook / WhatsApp contact is required.' : 'حقل التواصل مطلوب.';
         if (!form.delivery_address.trim()) errs.delivery_address = lang === 'en' ? 'Delivery address is required.' : 'عنوان التوصيل مطلوب.';
         if (cart.length === 0) errs.items = lang === 'en' ? 'Your cart is empty.' : 'سلّتك فارغة.';
         if (Object.keys(errs).length > 0) { setErrors(errs); return; }
@@ -863,7 +878,7 @@ function CheckoutModal({ open, onClose, cart, products, lang }: {
             })),
         }, {
             onError: (serverErrs) => { setErrors(serverErrs); setSubmitting(false); },
-            onSuccess: () => { setForm({ customer_name: '', customer_phone: '', customer_email: '', customer_facebook: '', delivery_address: '', notes: '' }); setEngravingTexts({}); },
+            onSuccess: () => { setForm({ customer_name: '', customer_phone: '', customer_email: '', customer_facebook: '', delivery_address: '', notes: '' }); setEngravingTexts({}); setCart([]); },
         });
     }
 
@@ -1671,10 +1686,15 @@ interface Props {
 
 export default function StoreIndex({ products, hero_image, hero_content }: Props) {
     const [lang, setLang] = useState<Lang>('en');
+    const [dark, setDark] = useState<boolean>(() => {
+        try { return localStorage.getItem('tbk_dark') !== 'false'; } catch { return true; }
+    });
     const [route, setRoute] = useState('home');
     const [productId, setProductId] = useState<number | null>(null);
     const [initialCat, setInitialCat] = useState<string | null>(null);
-    const [cart, setCart] = useState<CartItem[]>([]);
+    const [cart, setCart] = useState<CartItem[]>(() => {
+        try { return JSON.parse(localStorage.getItem('tbk_cart') ?? '[]') as CartItem[]; } catch { return []; }
+    });
     const [cartOpen, setCartOpen] = useState(false);
     const [checkoutOpen, setCheckoutOpen] = useState(false);
     const [toast, setToast] = useState({ on: false, msg: '' });
@@ -1686,9 +1706,19 @@ export default function StoreIndex({ products, hero_image, hero_content }: Props
     }, []);
 
     useEffect(() => {
+        if (dark) document.documentElement.classList.add('dark');
+        else document.documentElement.classList.remove('dark');
+        try { localStorage.setItem('tbk_dark', dark ? 'true' : 'false'); } catch {}
+    }, [dark]);
+
+    useEffect(() => {
         document.documentElement.lang = lang;
         document.documentElement.dir = COPY[lang].dir;
     }, [lang]);
+
+    useEffect(() => {
+        localStorage.setItem('tbk_cart', JSON.stringify(cart));
+    }, [cart]);
 
     useEffect(() => {
         killAllAnimations();
@@ -1746,7 +1776,7 @@ export default function StoreIndex({ products, hero_image, hero_content }: Props
             </Head>
             <a className="skip" href="#main">{lang === 'en' ? 'Skip to content' : 'تخطّى إلى المحتوى'}</a>
             <MetaStrip t={COPY[lang]} />
-            <Header lang={lang} setLang={setLang} route={route} navigate={navigate} cartCount={cartCount} openCart={() => setCartOpen(true)} openSearch={() => setSearchOpen(true)} />
+            <Header lang={lang} setLang={setLang} dark={dark} setDark={setDark} route={route} navigate={navigate} cartCount={cartCount} openCart={() => setCartOpen(true)} openSearch={() => setSearchOpen(true)} />
             <main id="main">
                 {route === 'home' && <HomePage lang={lang} navigate={navigate} products={products} addToCart={addToCart} heroImage={hero_image} heroContent={hero_content} />}
                 {route === 'collection' && <CollectionPage lang={lang} products={products} navigate={navigate} addToCart={addToCart} initialCat={initialCat} />}

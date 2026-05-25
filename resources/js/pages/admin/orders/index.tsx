@@ -1,5 +1,6 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { useState } from 'react';
+import { Trash2 } from 'lucide-react';
 import AdminLayout from '@/layouts/admin-layout';
 
 interface OrderItem {
@@ -44,6 +45,11 @@ const statuses = ['pending', 'processing', 'delivered', 'cancelled'];
 
 export default function OrdersIndex({ orders }: Props) {
     const [updating, setUpdating] = useState<number | null>(null);
+
+    function deleteOrder(orderId: number) {
+        if (!confirm(`Delete order #${String(orderId).padStart(5, '0')}? This cannot be undone.`)) return;
+        router.delete(`/admin/orders/${orderId}`, { preserveScroll: true });
+    }
 
     function updateStatus(orderId: number, status: string) {
         setUpdating(orderId);
@@ -105,12 +111,21 @@ export default function OrdersIndex({ orders }: Props) {
                                     </select>
                                 </td>
                                 <td className="px-6 py-4">
-                                    <Link
-                                        href={`/admin/orders/${order.id}`}
-                                        className="text-xs tracking-widest uppercase text-stone-400 hover:text-stone-700 transition-colors"
-                                    >
-                                        View →
-                                    </Link>
+                                    <div className="flex items-center gap-3">
+                                        <Link
+                                            href={`/admin/orders/${order.id}`}
+                                            className="text-xs tracking-widest uppercase text-stone-400 hover:text-stone-700 transition-colors"
+                                        >
+                                            View →
+                                        </Link>
+                                        <button
+                                            onClick={() => deleteOrder(order.id)}
+                                            className="text-stone-300 hover:text-red-400 transition-colors"
+                                            title="Delete order"
+                                        >
+                                            <Trash2 className="w-3.5 h-3.5" />
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         ))}

@@ -279,13 +279,13 @@ class ProductController extends Controller
             'category'      => ['nullable', 'string', 'max:255'],
             'stock_status'  => ['required', 'in:in_stock,out_of_stock'],
             'quantity'      => ['nullable', 'integer', 'min:0'],
-            'featured_image' => ['nullable', 'image', 'max:4096'],
+            'featured_image' => ['nullable', 'image', 'max:20480'],
             'is_active'        => ['boolean'],
             'allows_engraving' => ['boolean'],
             'variants'               => ['nullable', 'array'],
             'variants.*.value'       => ['required_with:variants', 'string', 'max:100'],
             'variants.*.price'       => ['required_with:variants', 'numeric', 'min:0'],
-            'variants.*.image'       => ['nullable', 'image', 'max:4096'],
+            'variants.*.image'       => ['nullable', 'image', 'max:20480'],
             'variants.*.current_image' => ['nullable', 'string'],
         ]);
     }

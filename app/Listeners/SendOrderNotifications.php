@@ -20,8 +20,12 @@ class SendOrderNotifications
             $admin->notify(new OrderPlacedNotification($order));
         }
 
-        // Send email alert to admin
-        $adminEmail = config('mail.admin_email', env('ADMIN_EMAIL', 'admin@medstore-jo.com'));
-        Mail::to($adminEmail)->send(new NewOrderAlert($order));
+        // Send email alert to admin — wrapped so a missing/invalid API key doesn't crash the order
+        try {
+            $adminEmail = config('mail.admin_email', env('ADMIN_EMAIL', 'admin@medstore-jo.com'));
+            Mail::to($adminEmail)->send(new NewOrderAlert($order));
+        } catch (\Throwable) {
+            // Mail is best-effort; order is already saved
+        }
     }
 }

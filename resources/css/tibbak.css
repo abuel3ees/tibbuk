@@ -33,6 +33,26 @@ html.tibbak {
   --tbk-radius-lg: 8px;
 }
 
+html.tibbak.dark {
+  --paper:     #0E1512;
+  --paper-2:   #141C19;
+  --paper-3:   #1C2822;
+  --ink:       #EAE6DE;
+  --ink-soft:  #B8B2A8;
+  --ink-mute:  #7A7570;
+  --rule:      #2A3530;
+  --rule-soft: #222E28;
+
+  --primary:    #3D9E7A;
+  --primary-2:  #52B892;
+  --primary-3:  #132820;
+  --accent:     #D47A48;
+  --accent-2:   #E89060;
+  --accent-3:   #2A1A10;
+  --warn:       #D4644A;
+  --ok:         #3D9E7A;
+}
+
 html.tibbak[lang="ar"] {
   --font-display: 'Amiri', 'Cormorant Garamond', serif;
   --font-body:    'IBM Plex Sans Arabic', 'Inter', system-ui, sans-serif;

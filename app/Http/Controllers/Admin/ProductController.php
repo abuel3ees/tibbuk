@@ -60,8 +60,8 @@ class ProductController extends Controller
 
         $featuredPending = null;
         if ($request->hasFile('featured_image')) {
-            $featuredPending = $request->file('featured_image')->store('products/pending', 'spaces');
-            $validated['featured_image'] = $featuredPending;
+            $featuredPending = $request->file('featured_image')->store('pending-uploads', 'local');
+            $validated['featured_image'] = null; // job will set the final path
         }
 
         $variants = $validated['variants'] ?? [];
@@ -93,13 +93,14 @@ class ProductController extends Controller
         }
 
         $featuredPending = null;
+        $oldFeatured = null;
         if ($request->hasFile('featured_image')) {
-            $old = $product->getRawOriginal('featured_image');
-            if ($old && !str_starts_with($old, 'http') && !str_starts_with($old, 'products/pending/')) {
-                Storage::disk('spaces')->delete($old);
+            $raw = $product->getRawOriginal('featured_image');
+            if ($raw && !str_starts_with($raw, 'http')) {
+                $oldFeatured = $raw; // job will delete it after uploading the new one
             }
-            $featuredPending = $request->file('featured_image')->store('products/pending', 'spaces');
-            $validated['featured_image'] = $featuredPending;
+            $featuredPending = $request->file('featured_image')->store('pending-uploads', 'local');
+            $validated['featured_image'] = null; // job will set the final path
         } else {
             unset($validated['featured_image']);
         }
@@ -108,12 +109,13 @@ class ProductController extends Controller
         $rawVariants = $product->getRawOriginal('variants');
         $existing = $rawVariants ? (json_decode($rawVariants, true) ?? []) : [];
 
-        // Delete old variant images for slots being replaced
+        // Collect old variant images for the job to clean up after replacing
+        $oldVariantImages = [];
         foreach (array_keys($variants) as $i) {
             if ($request->hasFile("variants.{$i}.image")) {
                 $oldImage = isset($existing[$i]) ? ($existing[$i]['image'] ?? null) : null;
-                if ($oldImage && !str_starts_with($oldImage, 'http') && !str_starts_with($oldImage, 'products/variants/pending/')) {
-                    Storage::disk('spaces')->delete($oldImage);
+                if ($oldImage && !str_starts_with($oldImage, 'http')) {
+                    $oldVariantImages[$i] = $oldImage;
                 }
             }
         }
@@ -124,7 +126,7 @@ class ProductController extends Controller
         $product->update($validated);
 
         if ($featuredPending !== null || !empty($variantsPending)) {
-            ProcessProductImages::dispatch($product->id, $featuredPending, $variantsPending);
+            ProcessProductImages::dispatch($product->id, $featuredPending, $variantsPending, $oldFeatured, $oldVariantImages);
         }
 
         return redirect()->route('admin.products.index')
@@ -332,9 +334,10 @@ class ProductController extends Controller
         $pending = [];
         foreach ($variants as $i => &$variant) {
             if ($request->hasFile("variants.{$i}.image")) {
-                $temp = $request->file("variants.{$i}.image")->store('products/variants/pending', 'spaces');
-                $variant['image'] = $temp;
-                $pending[$i] = $temp;
+                // Save to local disk — fast, no network roundtrip. Job uploads to Spaces.
+                $local = $request->file("variants.{$i}.image")->store('pending-uploads', 'local');
+                $variant['image'] = null; // job will fill this in
+                $pending[$i] = $local;
             } else {
                 $existingImage = isset($existing[$i]) ? ($existing[$i]['image'] ?? null) : null;
                 $raw = $variant['current_image'] ?? $existingImage;

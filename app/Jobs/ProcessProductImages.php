@@ -13,8 +13,10 @@ class ProcessProductImages implements ShouldQueue
 
     public function __construct(
         public readonly int $productId,
-        public readonly ?string $featuredImagePending,   // temp path or null
-        public readonly array $variantsPending,          // [variantIndex => tempPath]
+        public readonly ?string $featuredImageLocal,   // local pending-uploads path or null
+        public readonly array $variantsLocal,          // [variantIndex => local pending-uploads path]
+        public readonly ?string $oldFeaturedImage = null,      // Spaces path to delete after upload
+        public readonly array $oldVariantImages = [],          // [variantIndex => Spaces path to delete]
     ) {}
 
     public function handle(): void
@@ -22,32 +24,42 @@ class ProcessProductImages implements ShouldQueue
         $product = Product::find($this->productId);
 
         if (!$product) {
-            $this->cleanup();
+            $this->cleanupLocal();
             return;
         }
 
         $updates = [];
+        $local = Storage::disk('local');
+        $spaces = Storage::disk('spaces');
 
-        // Move featured image
-        if ($this->featuredImagePending) {
-            $temp = $this->featuredImagePending;
-            if (Storage::disk('spaces')->exists($temp)) {
-                $final = 'products/' . basename($temp);
-                Storage::disk('spaces')->move($temp, $final);
-                $updates['featured_image'] = $final;
+        // Upload featured image
+        if ($this->featuredImageLocal && $local->exists($this->featuredImageLocal)) {
+            $final = 'products/' . basename($this->featuredImageLocal);
+            $spaces->put($final, $local->get($this->featuredImageLocal));
+            $local->delete($this->featuredImageLocal);
+
+            if ($this->oldFeaturedImage) {
+                $spaces->delete($this->oldFeaturedImage);
             }
+
+            $updates['featured_image'] = $final;
         }
 
-        // Move variant images
-        if (!empty($this->variantsPending)) {
+        // Upload variant images
+        if (!empty($this->variantsLocal)) {
             $raw = $product->getRawOriginal('variants');
             $variants = $raw ? json_decode($raw, true) : [];
 
-            foreach ($this->variantsPending as $i => $temp) {
-                if (!Storage::disk('spaces')->exists($temp)) continue;
+            foreach ($this->variantsLocal as $i => $localPath) {
+                if (!$local->exists($localPath)) continue;
 
-                $final = 'products/variants/' . basename($temp);
-                Storage::disk('spaces')->move($temp, $final);
+                $final = 'products/variants/' . basename($localPath);
+                $spaces->put($final, $local->get($localPath));
+                $local->delete($localPath);
+
+                if (isset($this->oldVariantImages[$i])) {
+                    $spaces->delete($this->oldVariantImages[$i]);
+                }
 
                 if (isset($variants[$i])) {
                     $variants[$i]['image'] = $final;
@@ -62,13 +74,14 @@ class ProcessProductImages implements ShouldQueue
         }
     }
 
-    private function cleanup(): void
+    private function cleanupLocal(): void
     {
-        if ($this->featuredImagePending) {
-            Storage::disk('spaces')->delete($this->featuredImagePending);
+        $local = Storage::disk('local');
+        if ($this->featuredImageLocal) {
+            $local->delete($this->featuredImageLocal);
         }
-        foreach ($this->variantsPending as $path) {
-            Storage::disk('spaces')->delete($path);
+        foreach ($this->variantsLocal as $path) {
+            $local->delete($path);
         }
     }
 }

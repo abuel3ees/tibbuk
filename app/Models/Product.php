@@ -12,15 +12,27 @@ class Product extends Model
     protected $fillable = [
         'sku', 'name', 'slug', 'description', 'excerpt',
         'price', 'sale_price', 'cost_price', 'category',
-        'stock_status', 'quantity', 'featured_image', 'is_active', 'variants', 'allows_engraving',
+        'stock_status', 'quantity', 'featured_image', 'is_active', 'variants',
+        'allows_engraving', 'engraving_price',
+        'allows_stitching', 'stitching_price',
+        'allows_sizes', 'available_sizes',
+        'allows_gender', 'allows_color', 'available_colors',
     ];
 
     protected $casts = [
-        'price' => 'decimal:2',
-        'sale_price' => 'decimal:2',
-        'cost_price' => 'decimal:2',
-        'is_active' => 'boolean',
+        'price'           => 'decimal:2',
+        'sale_price'      => 'decimal:2',
+        'cost_price'      => 'decimal:2',
+        'engraving_price' => 'decimal:2',
+        'stitching_price' => 'decimal:2',
+        'is_active'        => 'boolean',
         'allows_engraving' => 'boolean',
+        'allows_stitching' => 'boolean',
+        'allows_sizes'     => 'boolean',
+        'allows_gender'    => 'boolean',
+        'allows_color'     => 'boolean',
+        'available_sizes'  => 'array',
+        'available_colors' => 'array',
     ];
 
     public function orderItems(): HasMany

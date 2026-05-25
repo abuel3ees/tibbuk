@@ -26,6 +26,10 @@ class OrderController extends Controller
             'items.*.quantity'        => ['required', 'integer', 'min:1'],
             'items.*.variant'         => ['nullable', 'string', 'max:100'],
             'items.*.engraving_text'  => ['nullable', 'string', 'max:100'],
+            'items.*.stitching_text'  => ['nullable', 'string', 'max:100'],
+            'items.*.selected_size'   => ['nullable', 'string', 'max:50'],
+            'items.*.selected_gender' => ['nullable', 'string', 'max:10'],
+            'items.*.selected_color'  => ['nullable', 'string', 'max:50'],
         ]);
 
         $total = 0;
@@ -52,13 +56,22 @@ class OrderController extends Controller
                 $engravingText = trim($item['engraving_text']);
             }
 
+            $stitchingText = null;
+            if ($product->allows_stitching && !empty($item['stitching_text'])) {
+                $stitchingText = trim($item['stitching_text']);
+            }
+
             $orderItems[] = [
-                'product_id'     => $product->id,
-                'product_name'   => $product->name . (!empty($item['variant']) ? ' — ' . $item['variant'] : ''),
-                'quantity'       => $item['quantity'],
-                'unit_price'     => $price,
-                'cost_price'     => $product->cost_price,
-                'engraving_text' => $engravingText,
+                'product_id'      => $product->id,
+                'product_name'    => $product->name . (!empty($item['variant']) ? ' — ' . $item['variant'] : ''),
+                'quantity'        => $item['quantity'],
+                'unit_price'      => $price,
+                'cost_price'      => $product->cost_price,
+                'engraving_text'  => $engravingText,
+                'stitching_text'  => $stitchingText,
+                'selected_size'   => !empty($item['selected_size'])   ? $item['selected_size']   : null,
+                'selected_gender' => !empty($item['selected_gender']) ? $item['selected_gender'] : null,
+                'selected_color'  => !empty($item['selected_color'])  ? $item['selected_color']  : null,
             ];
         }
 

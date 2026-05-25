@@ -1,7 +1,7 @@
 import { Head, Link, useForm } from '@inertiajs/react';
 import { useRef, useState } from 'react';
 import AdminLayout from '@/layouts/admin-layout';
-import { ArrowLeft, Upload, X, Plus, List } from 'lucide-react';
+import { ArrowLeft, Upload, X, Plus, List, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface Variant {
     value: string;
@@ -31,6 +31,14 @@ interface Product {
     featured_image: string | null;
     is_active: boolean;
     allows_engraving: boolean;
+    engraving_price: string;
+    allows_stitching: boolean;
+    stitching_price: string;
+    allows_sizes: boolean;
+    available_sizes: string[];
+    allows_gender: boolean;
+    allows_color: boolean;
+    available_colors: string[];
     variants: StoredVariant[] | null;
 }
 
@@ -57,6 +65,14 @@ const defaultValues = {
     featured_image: null as File | null,
     is_active: true,
     allows_engraving: false,
+    engraving_price: '',
+    allows_stitching: false,
+    stitching_price: '',
+    allows_sizes: false,
+    available_sizes: [] as string[],
+    allows_gender: false,
+    allows_color: false,
+    available_colors: [] as string[],
     variants: [] as Variant[],
 };
 
@@ -106,6 +122,14 @@ export default function ProductForm({ product, categories }: Props) {
             featured_image: null as File | null,
             is_active: product.is_active ?? true,
             allows_engraving: product.allows_engraving ?? false,
+            engraving_price: product.engraving_price ?? '',
+            allows_stitching: product.allows_stitching ?? false,
+            stitching_price: product.stitching_price ?? '',
+            allows_sizes: product.allows_sizes ?? false,
+            available_sizes: product.available_sizes ?? [],
+            allows_gender: product.allows_gender ?? false,
+            allows_color: product.allows_color ?? false,
+            available_colors: product.available_colors ?? [],
             variants: (product.variants ?? []).map(toFormVariant),
         } : defaultValues
     );
@@ -394,17 +418,11 @@ export default function ProductForm({ product, categories }: Props) {
                             />
                             <label htmlFor="is_active" className="text-sm text-stone-700">Active — visible to customers in the store</label>
                         </div>
-                        <div className="mt-3 flex items-center gap-3">
-                            <input
-                                type="checkbox"
-                                id="allows_engraving"
-                                checked={data.allows_engraving}
-                                onChange={e => setData('allows_engraving', e.target.checked)}
-                                className="w-4 h-4 accent-stone-900"
-                            />
-                            <label htmlFor="allows_engraving" className="text-sm text-stone-700">Allows engraving — show "name on product" field at checkout</label>
-                        </div>
                     </div>
+
+                    {/* Customizations */}
+                    <CustomizationsSection data={data} setData={setData} errors={errors as Record<string, string>} />
+
                     {/* Variants */}
                     <VariantsSection
                         variants={data.variants}
@@ -443,6 +461,159 @@ function Field({ label, error, children, className }: { label: string; error?: s
             <label className="block text-xs tracking-widest uppercase text-stone-400 mb-2">{label}</label>
             {children}
             {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
+        </div>
+    );
+}
+
+function TagEditor({ tags, onChange, placeholder }: { tags: string[]; onChange: (t: string[]) => void; placeholder?: string }) {
+    const [input, setInput] = useState('');
+
+    function add() {
+        const val = input.trim();
+        if (val && !tags.includes(val)) onChange([...tags, val]);
+        setInput('');
+    }
+
+    return (
+        <div>
+            <div className="flex gap-2">
+                <input
+                    value={input}
+                    onChange={e => setInput(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); add(); } }}
+                    className={inputClass + ' flex-1'}
+                    placeholder={placeholder ?? 'Type and press Enter'}
+                />
+                <button type="button" onClick={add}
+                    className="px-4 py-3 border border-stone-200 text-xs text-stone-500 hover:border-stone-400 hover:text-stone-900 transition-colors">
+                    <Plus className="w-3.5 h-3.5" />
+                </button>
+            </div>
+            {tags.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                    {tags.map((t, i) => (
+                        <span key={i} className="flex items-center gap-1 text-xs px-2.5 py-1 bg-stone-100 text-stone-700 border border-stone-200">
+                            {t}
+                            <button type="button" onClick={() => onChange(tags.filter((_, idx) => idx !== i))} className="text-stone-400 hover:text-red-500 ml-0.5">
+                                <X className="w-3 h-3" />
+                            </button>
+                        </span>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
+type FormData = {
+    allows_engraving: boolean;
+    engraving_price: string;
+    allows_stitching: boolean;
+    stitching_price: string;
+    allows_sizes: boolean;
+    available_sizes: string[];
+    allows_gender: boolean;
+    allows_color: boolean;
+    available_colors: string[];
+    [key: string]: unknown;
+};
+
+function CustomizationsSection({ data, setData, errors }: {
+    data: FormData;
+    setData: (key: string, val: unknown) => void;
+    errors: Record<string, string>;
+}) {
+    return (
+        <div className="p-8">
+            <h2 className="text-xs tracking-widest uppercase text-stone-400 mb-6">Customizations</h2>
+            <div className="space-y-6">
+
+                {/* Engraving */}
+                <div>
+                    <div className="flex items-center gap-3">
+                        <input type="checkbox" id="allows_engraving" checked={data.allows_engraving as boolean}
+                            onChange={e => setData('allows_engraving', e.target.checked)}
+                            className="w-4 h-4 accent-stone-900" />
+                        <label htmlFor="allows_engraving" className="text-sm font-medium text-stone-700">Engraving</label>
+                        <span className="text-xs text-stone-400">— customer types a name/text to engrave</span>
+                    </div>
+                    {data.allows_engraving && (
+                        <div className="mt-3 ml-7 max-w-xs">
+                            <Field label="Engraving Price (JD) — blank = free" error={errors.engraving_price}>
+                                <input type="number" step="0.01" min="0" value={data.engraving_price as string}
+                                    onChange={e => setData('engraving_price', e.target.value)}
+                                    className={inputClass} placeholder="0.00 (free)" />
+                            </Field>
+                        </div>
+                    )}
+                </div>
+
+                {/* Stitching */}
+                <div>
+                    <div className="flex items-center gap-3">
+                        <input type="checkbox" id="allows_stitching" checked={data.allows_stitching as boolean}
+                            onChange={e => setData('allows_stitching', e.target.checked)}
+                            className="w-4 h-4 accent-stone-900" />
+                        <label htmlFor="allows_stitching" className="text-sm font-medium text-stone-700">Stitching</label>
+                        <span className="text-xs text-stone-400">— customer types text to stitch onto the product</span>
+                    </div>
+                    {data.allows_stitching && (
+                        <div className="mt-3 ml-7 max-w-xs">
+                            <Field label="Stitching Price (JD) — blank = free" error={errors.stitching_price}>
+                                <input type="number" step="0.01" min="0" value={data.stitching_price as string}
+                                    onChange={e => setData('stitching_price', e.target.value)}
+                                    className={inputClass} placeholder="0.00 (free)" />
+                            </Field>
+                        </div>
+                    )}
+                </div>
+
+                {/* Sizes */}
+                <div>
+                    <div className="flex items-center gap-3">
+                        <input type="checkbox" id="allows_sizes" checked={data.allows_sizes as boolean}
+                            onChange={e => setData('allows_sizes', e.target.checked)}
+                            className="w-4 h-4 accent-stone-900" />
+                        <label htmlFor="allows_sizes" className="text-sm font-medium text-stone-700">Sizes</label>
+                        <span className="text-xs text-stone-400">— show a size picker at checkout</span>
+                    </div>
+                    {data.allows_sizes && (
+                        <div className="mt-3 ml-7">
+                            <label className="block text-xs tracking-widest uppercase text-stone-400 mb-2">Available Sizes</label>
+                            <TagEditor tags={data.available_sizes as string[]} onChange={v => setData('available_sizes', v)} placeholder="e.g. S, M, L, XL" />
+                        </div>
+                    )}
+                </div>
+
+                {/* Gender */}
+                <div>
+                    <div className="flex items-center gap-3">
+                        <input type="checkbox" id="allows_gender" checked={data.allows_gender as boolean}
+                            onChange={e => setData('allows_gender', e.target.checked)}
+                            className="w-4 h-4 accent-stone-900" />
+                        <label htmlFor="allows_gender" className="text-sm font-medium text-stone-700">Gender toggle</label>
+                        <span className="text-xs text-stone-400">— show Male / Female selector at checkout</span>
+                    </div>
+                </div>
+
+                {/* Colors */}
+                <div>
+                    <div className="flex items-center gap-3">
+                        <input type="checkbox" id="allows_color" checked={data.allows_color as boolean}
+                            onChange={e => setData('allows_color', e.target.checked)}
+                            className="w-4 h-4 accent-stone-900" />
+                        <label htmlFor="allows_color" className="text-sm font-medium text-stone-700">Color options</label>
+                        <span className="text-xs text-stone-400">— show a color picker at checkout</span>
+                    </div>
+                    {data.allows_color && (
+                        <div className="mt-3 ml-7">
+                            <label className="block text-xs tracking-widest uppercase text-stone-400 mb-2">Available Colors</label>
+                            <TagEditor tags={data.available_colors as string[]} onChange={v => setData('available_colors', v)} placeholder="e.g. Black, Navy, Red" />
+                        </div>
+                    )}
+                </div>
+
+            </div>
         </div>
     );
 }

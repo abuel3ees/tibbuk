@@ -18,9 +18,26 @@ interface Product {
     description: string | null;
     variants: ProductVariant[] | null;
     allows_engraving: boolean;
+    engraving_price: number | null;
+    allows_stitching: boolean;
+    stitching_price: number | null;
+    allows_sizes: boolean;
+    available_sizes: string[] | null;
+    allows_gender: boolean;
+    allows_color: boolean;
+    available_colors: string[] | null;
 }
 
-interface CartItem { id: number; qty: number; variant: string | null; engraving?: string }
+interface CartItem {
+    id: number;
+    qty: number;
+    variant: string | null;
+    engraving?: string;
+    stitching?: string;
+    size?: string;
+    gender?: string;
+    color?: string;
+}
 
 // ---- BILINGUAL COPY ----
 const COPY = {
@@ -521,7 +538,7 @@ function SearchOverlay({ lang, products, onClose, navigate, addToCart }: {
     products: Product[];
     onClose: () => void;
     navigate: (r: string, pid?: number | null, cat?: string | null) => void;
-    addToCart: (id: number, variant?: string | null) => void;
+    addToCart: (id: number, variant?: string | null, engraving?: string, stitching?: string, size?: string, gender?: string, color?: string) => void;
 }) {
     const t = COPY[lang];
     const [query, setQuery] = useState('');
@@ -706,11 +723,13 @@ function CartDrawer({ open, onClose, lang, cart, setCart, products, navigate, on
     const ship = 3;
     const totalCount = items.reduce((s, l) => s + l.qty, 0);
 
-    function setQty(id: number, variant: string | null, qty: number) {
+    function cartKey(l: CartItem) { return `${l.id}-${l.variant}-${l.size ?? ''}-${l.gender ?? ''}-${l.color ?? ''}`; }
+    function setQty(line: CartItem, qty: number) {
+        const k = cartKey(line);
         if (qty <= 0) {
-            setCart(c => c.filter(l => !(l.id === id && l.variant === variant)));
+            setCart(c => c.filter(l => cartKey(l) !== k));
         } else {
-            setCart(c => c.map(l => l.id === id && l.variant === variant ? { ...l, qty } : l));
+            setCart(c => c.map(l => cartKey(l) === k ? { ...l, qty } : l));
         }
     }
 
@@ -745,7 +764,7 @@ function CartDrawer({ open, onClose, lang, cart, setCart, products, navigate, on
                         items.map(l => {
                             const price = linePrice(l);
                             return (
-                                <div className="cart-line" key={`${l.id}-${l.variant}`}>
+                                <div className="cart-line" key={cartKey(l)}>
                                     <div className="cart-line__media">
                                         {(() => {
                                             const variantImg = l.variant
@@ -761,18 +780,22 @@ function CartDrawer({ open, onClose, lang, cart, setCart, products, navigate, on
                                         <div className="cart-line__name">{l.product.name}</div>
                                         {l.variant && <div className="cart-line__cat">{l.variant}</div>}
                                         {!l.variant && l.product.category && <div className="cart-line__cat">{l.product.category}</div>}
+                                        {l.size && <div className="cart-line__cat" style={{ fontSize: 12 }}>{lang === 'en' ? 'Size' : 'مقاس'}: {l.size}</div>}
+                                        {l.gender && <div className="cart-line__cat" style={{ fontSize: 12 }}>{lang === 'en' ? (l.gender === 'male' ? 'Male' : 'Female') : (l.gender === 'male' ? 'رجالي' : 'نسائي')}</div>}
+                                        {l.color && <div className="cart-line__cat" style={{ fontSize: 12 }}>{lang === 'en' ? 'Color' : 'لون'}: {l.color}</div>}
                                         {l.engraving && <div className="cart-line__cat" style={{ fontStyle: 'italic', fontSize: 12 }}>✎ {l.engraving}</div>}
+                                        {l.stitching && <div className="cart-line__cat" style={{ fontStyle: 'italic', fontSize: 12 }}>✦ {l.stitching}</div>}
                                         <div className="cart-line__qty">
-                                            <button onClick={() => setQty(l.id, l.variant, l.qty - 1)} aria-label="Decrease">−</button>
+                                            <button onClick={() => setQty(l, l.qty - 1)} aria-label="Decrease">−</button>
                                             <span className="v">{l.qty}</span>
-                                            <button onClick={() => setQty(l.id, l.variant, l.qty + 1)} aria-label="Increase">+</button>
+                                            <button onClick={() => setQty(l, l.qty + 1)} aria-label="Increase">+</button>
                                         </div>
                                     </div>
                                     <div style={{ textAlign: 'end' }}>
                                         <div className="cart-line__price">
                                             <span className="num">{fmt(Number(price) * l.qty, t.currency)}</span>
                                         </div>
-                                        <button className="cart-line__remove" onClick={() => setCart(c => c.filter(x => !(x.id === l.id && x.variant === l.variant)))}>
+                                        <button className="cart-line__remove" onClick={() => setCart(c => c.filter(x => cartKey(x) !== cartKey(l)))}>
                                             {t.remove}
                                         </button>
                                     </div>
@@ -879,7 +902,11 @@ function CheckoutModal({ open, onClose, cart, setCart, products, lang }: {
                 product_id: i.id,
                 quantity: i.qty,
                 variant: i.variant ?? undefined,
-                engraving_text: engravingTexts[`${i.id}-${i.variant}`] || undefined,
+                engraving_text: engravingTexts[`${i.id}-${i.variant}`] || i.engraving || undefined,
+                stitching_text: i.stitching || undefined,
+                selected_size: i.size || undefined,
+                selected_gender: i.gender || undefined,
+                selected_color: i.color || undefined,
             })),
         }, {
             onError: (serverErrs) => { setErrors(serverErrs); setSubmitting(false); },
@@ -1023,7 +1050,7 @@ function HomePage({ lang, navigate, products, addToCart, heroImage, heroContent 
     lang: Lang;
     navigate: (r: string, pid?: number | null, cat?: string | null) => void;
     products: Product[];
-    addToCart: (id: number, variant?: string | null) => void;
+    addToCart: (id: number, variant?: string | null, engraving?: string, stitching?: string, size?: string, gender?: string, color?: string) => void;
     heroImage: string | null;
     heroContent: HeroContent;
 }) {
@@ -1178,7 +1205,7 @@ function CollectionPage({ lang, products, navigate, addToCart, initialCat }: {
     lang: Lang;
     products: Product[];
     navigate: (r: string, pid?: number | null, cat?: string | null) => void;
-    addToCart: (id: number, variant?: string | null) => void;
+    addToCart: (id: number, variant?: string | null, engraving?: string, stitching?: string, size?: string, gender?: string, color?: string) => void;
     initialCat: string | null;
 }) {
     const t = COPY[lang].col;
@@ -1420,7 +1447,7 @@ function ProductPage({ lang, productId, navigate, products, addToCart }: {
     productId: number;
     navigate: (r: string, pid?: number | null, cat?: string | null) => void;
     products: Product[];
-    addToCart: (id: number, variant?: string | null) => void;
+    addToCart: (id: number, variant?: string | null, engraving?: string, stitching?: string, size?: string, gender?: string, color?: string) => void;
 }) {
     const t = COPY[lang].pdp;
     const cartT = COPY[lang].cart;
@@ -1429,8 +1456,16 @@ function ProductPage({ lang, productId, navigate, products, addToCart }: {
     const [selectedVariant, setSelectedVariant] = useState<string | null>(null);
     const [variantError, setVariantError] = useState('');
     const [engravingText, setEngravingText] = useState('');
+    const [stitchingText, setStitchingText] = useState('');
+    const [selectedSize, setSelectedSize] = useState<string | null>(null);
+    const [selectedGender, setSelectedGender] = useState<string | null>(null);
+    const [selectedColor, setSelectedColor] = useState<string | null>(null);
 
-    useEffect(() => { setQty(1); setSelectedVariant(null); setVariantError(''); setEngravingText(''); }, [productId]);
+    useEffect(() => {
+        setQty(1); setSelectedVariant(null); setVariantError('');
+        setEngravingText(''); setStitchingText('');
+        setSelectedSize(null); setSelectedGender(null); setSelectedColor(null);
+    }, [productId]);
 
     // Preload all variant images immediately so switching variants feels instant
     useEffect(() => {
@@ -1472,9 +1507,13 @@ function ProductPage({ lang, productId, navigate, products, addToCart }: {
         }
         setVariantError('');
         const engraving = product.allows_engraving && engravingText.trim() ? engravingText.trim() : undefined;
-        addToCart(product.id, selectedVariant, engraving);
+        const stitching = product.allows_stitching && stitchingText.trim() ? stitchingText.trim() : undefined;
+        const size = product.allows_sizes && selectedSize ? selectedSize : undefined;
+        const gender = product.allows_gender && selectedGender ? selectedGender : undefined;
+        const color = product.allows_color && selectedColor ? selectedColor : undefined;
+        addToCart(product.id, selectedVariant, engraving, stitching, size, gender, color);
         if (qty > 1) {
-            for (let i = 1; i < qty; i++) addToCart(product.id, selectedVariant);
+            for (let i = 1; i < qty; i++) addToCart(product.id, selectedVariant, engraving, stitching, size, gender, color);
         }
     }
 
@@ -1555,14 +1594,80 @@ function ProductPage({ lang, productId, navigate, products, addToCart }: {
                         </div>
                     )}
 
+                    {/* Sizes */}
+                    {product.allows_sizes && product.available_sizes && product.available_sizes.length > 0 && (
+                        <div style={{ marginTop: 20, paddingTop: 20, borderTop: '1px solid var(--rule-soft)' }}>
+                            <div style={{ fontSize: 12, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--ink-mute)', marginBottom: 10 }}>
+                                {lang === 'en' ? 'Size' : 'المقاس'}
+                                {selectedSize && <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0, marginInlineStart: 8, color: 'var(--ink)' }}>— {selectedSize}</span>}
+                            </div>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                                {product.available_sizes.map(s => {
+                                    const sel = selectedSize === s;
+                                    return (
+                                        <button key={s} type="button"
+                                            onClick={() => setSelectedSize(sel ? null : s)}
+                                            style={{ padding: '7px 14px', fontSize: 13, border: sel ? '2px solid var(--ink)' : '1px solid var(--rule)', background: sel ? 'var(--ink)' : 'var(--paper)', color: sel ? 'var(--paper)' : 'var(--ink)', cursor: 'pointer', borderRadius: 'var(--tbk-radius)', transition: 'all 0.12s', fontFamily: 'inherit' }}>
+                                            {s}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Gender */}
+                    {product.allows_gender && (
+                        <div style={{ marginTop: 20, paddingTop: 20, borderTop: '1px solid var(--rule-soft)' }}>
+                            <div style={{ fontSize: 12, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--ink-mute)', marginBottom: 10 }}>
+                                {lang === 'en' ? 'Gender' : 'الجنس'}
+                            </div>
+                            <div style={{ display: 'flex', gap: 8 }}>
+                                {(['male', 'female'] as const).map(g => {
+                                    const sel = selectedGender === g;
+                                    const label = lang === 'en' ? (g === 'male' ? 'Male' : 'Female') : (g === 'male' ? 'رجالي' : 'نسائي');
+                                    return (
+                                        <button key={g} type="button"
+                                            onClick={() => setSelectedGender(sel ? null : g)}
+                                            style={{ padding: '7px 20px', fontSize: 13, border: sel ? '2px solid var(--ink)' : '1px solid var(--rule)', background: sel ? 'var(--ink)' : 'var(--paper)', color: sel ? 'var(--paper)' : 'var(--ink)', cursor: 'pointer', borderRadius: 'var(--tbk-radius)', transition: 'all 0.12s', fontFamily: 'inherit' }}>
+                                            {label}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Colors */}
+                    {product.allows_color && product.available_colors && product.available_colors.length > 0 && (
+                        <div style={{ marginTop: 20, paddingTop: 20, borderTop: '1px solid var(--rule-soft)' }}>
+                            <div style={{ fontSize: 12, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--ink-mute)', marginBottom: 10 }}>
+                                {lang === 'en' ? 'Color' : 'اللون'}
+                                {selectedColor && <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0, marginInlineStart: 8, color: 'var(--ink)' }}>— {selectedColor}</span>}
+                            </div>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                                {product.available_colors.map(c => {
+                                    const sel = selectedColor === c;
+                                    return (
+                                        <button key={c} type="button"
+                                            onClick={() => setSelectedColor(sel ? null : c)}
+                                            style={{ padding: '7px 14px', fontSize: 13, border: sel ? '2px solid var(--ink)' : '1px solid var(--rule)', background: sel ? 'var(--ink)' : 'var(--paper)', color: sel ? 'var(--paper)' : 'var(--ink)', cursor: 'pointer', borderRadius: 'var(--tbk-radius)', transition: 'all 0.12s', fontFamily: 'inherit' }}>
+                                            {c}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Engraving */}
                     {product.allows_engraving && (
                         <div style={{ marginTop: 20, paddingTop: 20, borderTop: '1px solid var(--rule-soft)' }}>
                             <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ink-mute)', marginBottom: 8 }}>
                                 <EngraveIcon />
                                 {COPY[lang].checkout.engravingLabel}
-                                <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0, color: 'var(--ink-mute)', opacity: 0.7 }}>
-                                    ({lang === 'en' ? 'optional' : 'اختياري'})
-                                </span>
+                                {product.engraving_price ? <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0, color: 'var(--ink-mute)', opacity: 0.7 }}>(+{fmt(product.engraving_price, COPY[lang].cart.currency)})</span>
+                                    : <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0, color: 'var(--ink-mute)', opacity: 0.7 }}>({lang === 'en' ? 'free · optional' : 'مجاني · اختياري'})</span>}
                             </label>
                             <input
                                 type="text"
@@ -1575,6 +1680,30 @@ function ProductPage({ lang, productId, navigate, products, addToCart }: {
                             {engravingText && (
                                 <div style={{ fontSize: 12, color: 'var(--ink-mute)', marginTop: 4, textAlign: 'end' }}>
                                     {30 - engravingText.length} {lang === 'en' ? 'chars left' : 'حرف متبقّ'}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Stitching */}
+                    {product.allows_stitching && (
+                        <div style={{ marginTop: 20, paddingTop: 20, borderTop: '1px solid var(--rule-soft)' }}>
+                            <label style={{ display: 'block', fontSize: 12, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ink-mute)', marginBottom: 8 }}>
+                                {lang === 'en' ? 'Stitching text' : 'نص التطريز'}
+                                {product.stitching_price ? <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0, marginInlineStart: 6 }}>(+{fmt(product.stitching_price, COPY[lang].cart.currency)})</span>
+                                    : <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0, marginInlineStart: 6 }}>({lang === 'en' ? 'free · optional' : 'مجاني · اختياري'})</span>}
+                            </label>
+                            <input
+                                type="text"
+                                maxLength={30}
+                                placeholder={lang === 'en' ? 'Text to stitch on the product' : 'النص المراد تطريزه'}
+                                value={stitchingText}
+                                onChange={e => setStitchingText(e.target.value)}
+                                style={{ width: '100%', padding: '10px 14px', border: '1px solid var(--rule)', borderRadius: 'var(--tbk-radius)', background: 'var(--paper)', color: 'var(--ink)', fontSize: 14, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
+                            />
+                            {stitchingText && (
+                                <div style={{ fontSize: 12, color: 'var(--ink-mute)', marginTop: 4, textAlign: 'end' }}>
+                                    {30 - stitchingText.length} {lang === 'en' ? 'chars left' : 'حرف متبقّ'}
                                 </div>
                             )}
                         </div>
@@ -1901,11 +2030,13 @@ export default function StoreIndex({ products, hero_image, hero_content }: Props
         setTimeout(() => setToast(t => ({ ...t, on: false })), 1800);
     }
 
-    function addToCart(id: number, variant: string | null = null, engraving?: string) {
+    function addToCart(id: number, variant: string | null = null, engraving?: string, stitching?: string, size?: string, gender?: string, color?: string) {
         setCart(c => {
-            const found = c.find(l => l.id === id && l.variant === variant);
-            if (found) return c.map(l => l.id === id && l.variant === variant ? { ...l, qty: l.qty + 1 } : l);
-            return [...c, { id, qty: 1, variant, engraving }];
+            const key = (l: CartItem) => `${l.id}-${l.variant}-${l.size ?? ''}-${l.gender ?? ''}-${l.color ?? ''}`;
+            const newKey = `${id}-${variant}-${size ?? ''}-${gender ?? ''}-${color ?? ''}`;
+            const found = c.find(l => key(l) === newKey);
+            if (found) return c.map(l => key(l) === newKey ? { ...l, qty: l.qty + 1 } : l);
+            return [...c, { id, qty: 1, variant, engraving, stitching, size, gender, color }];
         });
         showToast(COPY[lang].addedToast);
         setCartOpen(true);

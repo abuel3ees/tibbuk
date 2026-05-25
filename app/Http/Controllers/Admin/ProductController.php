@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Jobs\ProcessVariantImages;
+use App\Jobs\ProcessProductImages;
 use App\Models\Product;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -58,21 +58,20 @@ class ProductController extends Controller
         $validated = $this->validateProduct($request);
         $validated['slug'] = $this->uniqueSlug($validated['name']);
 
+        $featuredPending = null;
         if ($request->hasFile('featured_image')) {
-            $validated['featured_image'] = $request->file('featured_image')->store('products', 'spaces');
+            $featuredPending = $request->file('featured_image')->store('products/pending', 'spaces');
+            $validated['featured_image'] = $featuredPending;
         }
 
         $variants = $validated['variants'] ?? [];
-        $imageCount = $this->countVariantImages($request, $variants);
+        [$variants, $variantsPending] = $this->storeVariantImagesPending($request, $variants);
+        $validated['variants'] = $variants;
 
-        if ($imageCount >= 2) {
-            [$variants, $pending] = $this->storeVariantImagesPending($request, $variants);
-            $validated['variants'] = $variants;
-            $product = Product::create($validated);
-            ProcessVariantImages::dispatch($product->id, $pending);
-        } else {
-            $validated['variants'] = $this->processVariantImages($request, $variants);
-            Product::create($validated);
+        $product = Product::create($validated);
+
+        if ($featuredPending !== null || !empty($variantsPending)) {
+            ProcessProductImages::dispatch($product->id, $featuredPending, $variantsPending);
         }
 
         return redirect()->route('admin.products.index')
@@ -93,12 +92,14 @@ class ProductController extends Controller
             $validated['slug'] = $this->uniqueSlug($validated['name'], $product->id);
         }
 
+        $featuredPending = null;
         if ($request->hasFile('featured_image')) {
             $old = $product->getRawOriginal('featured_image');
-            if ($old && !str_starts_with($old, 'http')) {
+            if ($old && !str_starts_with($old, 'http') && !str_starts_with($old, 'products/pending/')) {
                 Storage::disk('spaces')->delete($old);
             }
-            $validated['featured_image'] = $request->file('featured_image')->store('products', 'spaces');
+            $featuredPending = $request->file('featured_image')->store('products/pending', 'spaces');
+            $validated['featured_image'] = $featuredPending;
         } else {
             unset($validated['featured_image']);
         }
@@ -107,25 +108,23 @@ class ProductController extends Controller
         $rawVariants = $product->getRawOriginal('variants');
         $existing = $rawVariants ? (json_decode($rawVariants, true) ?? []) : [];
 
-        $imageCount = $this->countVariantImages($request, $variants);
-
-        if ($imageCount >= 2) {
-            // Delete old images for slots being replaced before queuing
-            foreach (array_keys($variants) as $i) {
-                if ($request->hasFile("variants.{$i}.image")) {
-                    $oldImage = isset($existing[$i]) ? ($existing[$i]['image'] ?? null) : null;
-                    if ($oldImage && !str_starts_with($oldImage, 'http')) {
-                        Storage::disk('spaces')->delete($oldImage);
-                    }
+        // Delete old variant images for slots being replaced
+        foreach (array_keys($variants) as $i) {
+            if ($request->hasFile("variants.{$i}.image")) {
+                $oldImage = isset($existing[$i]) ? ($existing[$i]['image'] ?? null) : null;
+                if ($oldImage && !str_starts_with($oldImage, 'http') && !str_starts_with($oldImage, 'products/variants/pending/')) {
+                    Storage::disk('spaces')->delete($oldImage);
                 }
             }
-            [$variants, $pending] = $this->storeVariantImagesPending($request, $variants, $existing);
-            $validated['variants'] = $variants;
-            $product->update($validated);
-            ProcessVariantImages::dispatch($product->id, $pending);
-        } else {
-            $validated['variants'] = $this->processVariantImages($request, $variants, $existing);
-            $product->update($validated);
+        }
+
+        [$variants, $variantsPending] = $this->storeVariantImagesPending($request, $variants, $existing);
+        $validated['variants'] = $variants;
+
+        $product->update($validated);
+
+        if ($featuredPending !== null || !empty($variantsPending)) {
+            ProcessProductImages::dispatch($product->id, $featuredPending, $variantsPending);
         }
 
         return redirect()->route('admin.products.index')
@@ -307,24 +306,25 @@ class ProductController extends Controller
             'category'      => ['nullable', 'string', 'max:255'],
             'stock_status'  => ['required', 'in:in_stock,out_of_stock'],
             'quantity'      => ['nullable', 'integer', 'min:0'],
-            'featured_image' => ['nullable', 'image', 'max:20480'],
+            'featured_image'   => ['nullable', 'image', 'max:20480'],
             'is_active'        => ['boolean'],
             'allows_engraving' => ['boolean'],
+            'engraving_price'  => ['nullable', 'numeric', 'min:0'],
+            'allows_stitching' => ['boolean'],
+            'stitching_price'  => ['nullable', 'numeric', 'min:0'],
+            'allows_sizes'     => ['boolean'],
+            'available_sizes'  => ['nullable', 'array'],
+            'available_sizes.*' => ['string', 'max:50'],
+            'allows_gender'    => ['boolean'],
+            'allows_color'     => ['boolean'],
+            'available_colors'  => ['nullable', 'array'],
+            'available_colors.*' => ['string', 'max:50'],
             'variants'               => ['nullable', 'array'],
             'variants.*.value'       => ['required_with:variants', 'string', 'max:100'],
             'variants.*.price'       => ['required_with:variants', 'numeric', 'min:0'],
             'variants.*.image'       => ['nullable', 'image', 'max:20480'],
             'variants.*.current_image' => ['nullable', 'string'],
         ]);
-    }
-
-    private function countVariantImages(Request $request, array $variants): int
-    {
-        $count = 0;
-        foreach (array_keys($variants) as $i) {
-            if ($request->hasFile("variants.{$i}.image")) $count++;
-        }
-        return $count;
     }
 
     private function storeVariantImagesPending(Request $request, array $variants, array $existing = []): array
@@ -344,30 +344,6 @@ class ProductController extends Controller
         }
         unset($variant);
         return [$variants, $pending];
-    }
-
-    private function processVariantImages(Request $request, array $variants, array $existing = []): array
-    {
-        foreach ($variants as $i => &$variant) {
-            if ($request->hasFile("variants.{$i}.image")) {
-                // Delete old variant image if stored locally
-                $oldImage = isset($existing[$i]) ? ($existing[$i]['image'] ?? null) : null;
-                if ($oldImage && !str_starts_with($oldImage, 'http')) {
-                    Storage::disk('spaces')->delete($oldImage);
-                }
-                $variant['image'] = $request->file("variants.{$i}.image")->store('products/variants', 'spaces');
-            } else {
-                // The form sends back current_image which may already be a /storage/ URL
-                // (because the model accessor transforms raw paths to URLs for the frontend).
-                // Strip the prefix so we always store a raw relative path in the DB.
-                $existingImage = isset($existing[$i]) ? ($existing[$i]['image'] ?? null) : null;
-                $raw = $variant['current_image'] ?? $existingImage;
-                $variant['image'] = $raw ? $this->toRawPath($raw) : null;
-            }
-            unset($variant['current_image']);
-        }
-        unset($variant);
-        return $variants;
     }
 
     private function toRawPath(?string $path): ?string

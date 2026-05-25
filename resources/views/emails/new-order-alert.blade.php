@@ -66,8 +66,20 @@
                 <tr>
                     <td>
                         {{ $item->product_name }}
+                        @if($item->selected_size)
+                            <br><span style="font-size:12px;color:#888;">Size: {{ $item->selected_size }}</span>
+                        @endif
+                        @if($item->selected_gender)
+                            <br><span style="font-size:12px;color:#888;">{{ ucfirst($item->selected_gender) }}</span>
+                        @endif
+                        @if($item->selected_color)
+                            <br><span style="font-size:12px;color:#888;">Color: {{ $item->selected_color }}</span>
+                        @endif
                         @if($item->engraving_text)
-                            <br><span style="font-size:12px; color:#888;">✏️ Engraving: {{ $item->engraving_text }}</span>
+                            <br><span style="font-size:12px;color:#888;">✎ Engraving: {{ $item->engraving_text }}</span>
+                        @endif
+                        @if($item->stitching_text)
+                            <br><span style="font-size:12px;color:#888;">✦ Stitching: {{ $item->stitching_text }}</span>
                         @endif
                     </td>
                     <td style="text-align:center;">{{ $item->quantity }}</td>

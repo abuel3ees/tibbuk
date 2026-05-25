@@ -898,8 +898,7 @@ function CheckoutModal({ open, onClose, cart, setCart, products, lang }: {
         } else if (!validatePhone(form.customer_phone)) {
             errs.customer_phone = lang === 'en' ? 'Enter a valid Jordanian phone number (e.g. 07XXXXXXXX).' : 'أدخل رقم هاتف أردني صحيح (مثال: 07XXXXXXXX).';
         }
-        if (!form.customer_email.trim()) errs.customer_email = lang === 'en' ? 'Email is required.' : 'البريد الإلكتروني مطلوب.';
-        else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.customer_email)) errs.customer_email = lang === 'en' ? 'Enter a valid email.' : 'أدخل بريدًا إلكترونيًا صحيحًا.';
+        if (form.customer_email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.customer_email)) errs.customer_email = lang === 'en' ? 'Enter a valid email.' : 'أدخل بريدًا إلكترونيًا صحيحًا.';
         if (!form.customer_facebook.trim()) errs.customer_facebook = lang === 'en' ? 'Facebook / WhatsApp contact is required.' : 'حقل التواصل مطلوب.';
         if (!form.delivery_address.trim()) errs.delivery_address = lang === 'en' ? 'Delivery address is required.' : 'عنوان التوصيل مطلوب.';
         if (cart.length === 0) errs.items = lang === 'en' ? 'Your cart is empty.' : 'سلّتك فارغة.';
@@ -951,7 +950,7 @@ function CheckoutModal({ open, onClose, cart, setCart, products, lang }: {
                             {[
                                 { key: 'customer_name',     label: t.name,     placeholder: t.namePlaceholder,     type: 'text' },
                                 { key: 'customer_phone',    label: t.phone,    placeholder: t.phonePlaceholder,    type: 'tel' },
-                                { key: 'customer_email',    label: t.email,    placeholder: t.emailPlaceholder,    type: 'email' },
+                                { key: 'customer_email',    label: t.email + (lang === 'en' ? ' (optional)' : ' (اختياري)'),    placeholder: t.emailPlaceholder,    type: 'email' },
                                 { key: 'customer_facebook', label: t.facebook, placeholder: t.facebookPlaceholder, type: 'text' },
                             ].map(({ key, label, placeholder, type }) => (
                                 <div className="form-field" key={key}>

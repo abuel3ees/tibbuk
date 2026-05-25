@@ -17,7 +17,7 @@ class OrderController extends Controller
         $validated = $request->validate([
             'customer_name'    => ['required', 'string', 'max:255'],
             'customer_phone'   => ['required', 'string', 'regex:/^(\+?962|0)7[789]\d{7}$/'],
-            'customer_email'    => ['required', 'email', 'max:255'],
+            'customer_email'    => ['nullable', 'email', 'max:255'],
             'customer_facebook' => ['required', 'string', 'max:500'],
             'delivery_address'  => ['required', 'string', 'max:500'],
             'notes'            => ['nullable', 'string', 'max:1000'],

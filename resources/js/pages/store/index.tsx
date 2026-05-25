@@ -35,14 +35,16 @@ const COPY = {
             pill: 'Built for Jordan\'s medical students',
             title_a: 'Everything for your ',
             title_em: 'clinical year',
-            title_b: ', delivered.',
-            lede: 'Stethoscopes, BP cuffs, otoscopes, scrubs, and pocket references — picked by senior residents, priced for students, shipped anywhere in Jordan.',
+            title_b: ', delivered to your door.',
+            lede: 'Stethoscopes, BP cuffs, otoscopes, scrubs, and pocket references — hand-picked by senior residents at Hashemite University, priced for students, shipped to all 12 governorates in 48 hours.',
+            lede2: 'No complicated ordering. No minimum spend. Pay when it arrives.',
             cta_primary: 'Browse all products',
             cta_ghost: 'How it works',
             trust: [
-                { i: 'shield', t: '2-year warranty on instruments' },
-                { i: 'truck',  t: '48-hour delivery across Jordan' },
-                { i: 'wallet', t: 'Cash on delivery — all Jordan' },
+                { i: 'shield', t: '2-year warranty on all instruments' },
+                { i: 'truck',  t: '48-hour delivery across all Jordan' },
+                { i: 'wallet', t: 'Cash on delivery — every governorate' },
+                { i: 'engrave', t: 'Free name engraving on stethoscopes' },
             ],
         },
         sections: {
@@ -54,9 +56,9 @@ const COPY = {
         cats_cta: 'Browse all categories',
         feats_cta: 'View all products',
         steps: [
-            { n: '01', t: 'Build your kit',           b: 'Pick exactly what you need for your clinical year — individual instruments, coats, or pocket references.' },
-            { n: '02', t: 'Check out — pay your way', b: 'Cash on delivery anywhere in Jordan, or pay by card at your door. Show a student ID for a 10% discount.' },
-            { n: '03', t: 'Receive in 48 hours',      b: 'We ship to all 12 governorates within 48 hours. Stethoscopes ship with free name engraving.' },
+            { n: '01', t: 'Build your kit',           b: 'Pick exactly what you need for your clinical year — individual instruments, white coats, or pocket references. No account needed.' },
+            { n: '02', t: 'Check out — pay your way', b: 'Cash on delivery anywhere in Jordan. No account needed — just your name, number, and delivery address.' },
+            { n: '03', t: 'Receive in 48 hours',      b: 'We ship to all 12 governorates within 48 hours. Every stethoscope ships with free name engraving.' },
         ],
         features: [
             { i: 'engrave', t: 'Free engraving',   b: 'Add your name on any stethoscope at checkout.' },
@@ -105,20 +107,16 @@ const COPY = {
             lede: 'Curated by senior residents from Jordan\'s medical schools. Save up to 25% versus buying piece-by-piece.',
         },
         universities: [
-            { name: 'University of Jordan',                         short: 'JU'        },
-            { name: 'Jordan University of Science and Technology',   short: 'JUST'      },
-            { name: 'Hashemite University',                         short: 'Hashemite' },
-            { name: 'Mu\'tah University',                           short: 'Mu\'tah'   },
-            { name: 'Yarmouk University',                           short: 'Yarmouk'   },
+            { name: 'Hashemite University', short: 'Hashemite' },
         ],
         footer: {
             tag: 'Independent supplier of medical equipment, built for Jordan\'s medical students. Based in Amman.',
             sections: [
                 { h: 'Shop',    links: ['Stethoscopes', 'Diagnostics', 'Coats & Scrubs', 'Practice kits', 'Pocket references'] },
-                { h: 'Support', links: ['Contact us', 'Track your order', 'Shipping & returns', 'Student discount'] },
+                { h: 'Support', links: ['Contact us', 'Track your order', 'Shipping & returns'] },
             ],
             news: 'Get clinical-year tips',
-            newsBody: 'Once a month, a short email from our team — kit checklists, OSCE prep, and a discount or two.',
+            newsBody: 'Once a month, a short email from our team — kit checklists, OSCE prep tips, and new arrivals.',
             newsPlaceholder: 'Your email',
             newsCta: 'Subscribe',
             legal_l: '© 2026 Tibbuk. Registered in Amman, Jordan.',
@@ -159,13 +157,15 @@ const COPY = {
             title_a: 'كلّ ما يلزمك ',
             title_em: 'للسنة السريريّة',
             title_b: '، يصلك إلى باب بيتك.',
-            lede: 'سمّاعات وأجهزة ضغط ومناظير أذن وسكرَب ومراجع جيب — يختارها أطبّاء مقيمون، بأسعار للطلّاب، تُشحن إلى أيّ مكان في الأردنّ.',
+            lede: 'سمّاعات وأجهزة ضغط ومناظير أذن وسكرَب ومراجع جيب — يختارها أطبّاء مقيمون في الجامعة الهاشميّة، بأسعار للطلّاب، تُشحن إلى كلّ المحافظات الـ١٢ خلال ٤٨ ساعة.',
+            lede2: 'بدون تعقيد. بدون حدٍّ أدنى للطلب. ادفع عند الاستلام.',
             cta_primary: 'تصفّح كلّ المنتجات',
             cta_ghost: 'كيف يعمل',
             trust: [
-                { i: 'shield', t: 'ضمان سنتين على الأدوات' },
+                { i: 'shield', t: 'ضمان سنتين على جميع الأدوات' },
                 { i: 'truck',  t: 'توصيل خلال ٤٨ ساعة في كلّ الأردنّ' },
-                { i: 'wallet', t: 'الدفع عند الاستلام — كلّ الأردنّ' },
+                { i: 'wallet', t: 'الدفع عند الاستلام — كلّ المحافظات' },
+                { i: 'engrave', t: 'نقش اسم مجّاني على السمّاعات' },
             ],
         },
         sections: {
@@ -177,9 +177,9 @@ const COPY = {
         cats_cta: 'تصفّح كلّ الفئات',
         feats_cta: 'اعرض كلّ المنتجات',
         steps: [
-            { n: '٠١', t: 'جهّز عُدّتك',          b: 'اختر بالضبط ما تحتاجه للسنة السريريّة — أدوات، معاطف، أو مراجع جيب.' },
-            { n: '٠٢', t: 'ادفع كما يناسبك',       b: 'الدفع عند الاستلام في كلّ الأردنّ، أو بالبطاقة. أحضر بطاقة الجامعة لخصم ١٠٪.' },
-            { n: '٠٣', t: 'استلم خلال ٤٨ ساعة',   b: 'نشحن إلى كلّ المحافظات الـ١٢ خلال ٤٨ ساعة. السمّاعات تُشحن بنقش اسم مجّاني.' },
+            { n: '٠١', t: 'جهّز عُدّتك',          b: 'اختر بالضبط ما تحتاجه للسنة السريريّة — أدوات، معاطف، أو مراجع جيب. بدون حساب.' },
+            { n: '٠٢', t: 'ادفع كما يناسبك',       b: 'الدفع عند الاستلام في كلّ الأردنّ. لا حساب مطلوب — فقط اسمك ورقمك وعنوان التوصيل.' },
+            { n: '٠٣', t: 'استلم خلال ٤٨ ساعة',   b: 'نشحن إلى كلّ المحافظات الـ١٢ خلال ٤٨ ساعة. كلّ سمّاعة تُشحن بنقش اسم مجّاني.' },
         ],
         features: [
             { i: 'engrave', t: 'نقش مجّاني',           b: 'أضف اسمك على أيّ سمّاعة عند الدفع.' },
@@ -228,20 +228,16 @@ const COPY = {
             lede: 'أعدّها أطبّاء مقيمون من كلّيّات الطبّ الأردنيّة. وفّر حتّى ٢٥٪ مقارنةً بالشراء الفردي.',
         },
         universities: [
-            { name: 'الجامعة الأردنيّة',                      short: 'الأردنيّة' },
-            { name: 'جامعة العلوم والتكنولوجيا الأردنيّة',    short: 'JUST'      },
-            { name: 'الجامعة الهاشميّة',                      short: 'الهاشميّة'  },
-            { name: 'جامعة مؤتة',                             short: 'مؤتة'      },
-            { name: 'جامعة اليرموك',                          short: 'اليرموك'   },
+            { name: 'الجامعة الهاشميّة', short: 'الهاشميّة' },
         ],
         footer: {
             tag: 'مورِّد مستقلّ للمعدّات الطبيّة، مصمّم لطلبة الطبّ في الأردنّ. مقرّنا عمّان.',
             sections: [
                 { h: 'المتجر',    links: ['السمّاعات', 'أدوات التشخيص', 'المعاطف والسكرَب', 'أطقم التدريب', 'مراجع الجيب'] },
-                { h: 'المساعدة',  links: ['تواصل معنا', 'تتبّع طلبك', 'الشحن والإرجاع', 'خصم الطلّاب'] },
+                { h: 'المساعدة',  links: ['تواصل معنا', 'تتبّع طلبك', 'الشحن والإرجاع'] },
             ],
             news: 'نصائح للسنة السريريّة',
-            newsBody: 'مرّة في الشهر، رسالة قصيرة من فريقنا — قوائم العُدّة وتحضير OSCE وخصم أو اثنين.',
+            newsBody: 'مرّة في الشهر، رسالة قصيرة من فريقنا — قوائم العُدّة وتحضير OSCE والمنتجات الجديدة.',
             newsPlaceholder: 'بريدك الإلكتروني',
             newsCta: 'اشترك',
             legal_l: '© ٢٠٢٦ طِبّك (Tibbuk). مسجَّلة في عمّان، الأردنّ.',
@@ -1052,31 +1048,27 @@ function HomePage({ lang, navigate, products, addToCart, heroImage, heroContent 
         <>
             <section className="hero">
                 <div className="wrap">
-                    <div className="hero__grid">
-                        <div className="hero__copy">
-                            <span className="pill"><span className="dot" />{pill}</span>
-                            <h1 className="h1">
-                                {title
-                                    ? title
-                                    : <>{t.hero.title_a}<em>{t.hero.title_em}</em>{t.hero.title_b}</>}
-                            </h1>
-                            <p className="body-lg hero__lede">{lede}</p>
-                            <div className="hero__cta">
-                                <button className="btn btn--lg" onClick={() => navigate('collection')}>
-                                    {t.hero.cta_primary} <span className="arrow"><ArrowIcon /></span>
-                                </button>
-                                <button className="btn btn--ghost btn--lg" onClick={() => navigate('how')}>
-                                    {t.hero.cta_ghost}
-                                </button>
-                            </div>
-                            <div className="hero__trust">
-                                {t.hero.trust.map((tr, i) => (
-                                    <div key={i}><FeatureIcon kind={tr.i} /><span>{tr.t}</span></div>
-                                ))}
-                            </div>
+                    <div className="hero__copy">
+                        <span className="pill"><span className="dot" />{pill}</span>
+                        <h1 className="h1">
+                            {title
+                                ? title
+                                : <>{t.hero.title_a}<em>{t.hero.title_em}</em>{t.hero.title_b}</>}
+                        </h1>
+                        <p className="body-lg hero__lede">{lede}</p>
+                        <p className="hero__lede2">{t.hero.lede2}</p>
+                        <div className="hero__cta">
+                            <button className="btn btn--lg" onClick={() => navigate('collection')}>
+                                {t.hero.cta_primary} <span className="arrow"><ArrowIcon /></span>
+                            </button>
+                            <button className="btn btn--ghost btn--lg" onClick={() => navigate('how')}>
+                                {t.hero.cta_ghost}
+                            </button>
                         </div>
-                        <div className="hero__media">
-                            {heroImage && <img src={heroImage} alt={t.hero.title_a + t.hero.title_em + t.hero.title_b} />}
+                        <div className="hero__trust">
+                            {t.hero.trust.map((tr, i) => (
+                                <div key={i}><FeatureIcon kind={tr.i} /><span>{tr.t}</span></div>
+                            ))}
                         </div>
                     </div>
                 </div>
@@ -1440,6 +1432,13 @@ function ProductPage({ lang, productId, navigate, products, addToCart }: {
 
     useEffect(() => { setQty(1); setSelectedVariant(null); setVariantError(''); setEngravingText(''); }, [productId]);
 
+    // Preload all variant images immediately so switching variants feels instant
+    useEffect(() => {
+        const urls = (product.variants ?? []).map(v => v.image).filter(Boolean) as string[];
+        if (product.featured_image) urls.push(product.featured_image);
+        urls.forEach(src => { const img = new Image(); img.src = src; });
+    }, [productId]);
+
     if (!product) {
         return (
             <div className="wrap" style={{ padding: '80px 0', textAlign: 'center' }}>
@@ -1484,7 +1483,7 @@ function ProductPage({ lang, productId, navigate, products, addToCart }: {
             <section className="wrap pdp">
                 <div className="pdp__media-main">
                     {displayImage ? (
-                        <img src={displayImage} alt={product.name} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+                        <img src={displayImage} alt={product.name} loading="eager" fetchPriority="high" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
                     ) : (
                         <PHolder accent="default" label={product.category ?? 'product'} />
                     )}

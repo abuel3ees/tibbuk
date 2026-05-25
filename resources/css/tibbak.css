@@ -272,35 +272,18 @@ html.tibbak[dir="rtl"] .tbk .link-btn svg { transform: scaleX(-1); }
 html.tibbak[dir="rtl"] .tbk .placeholder__corner { left: auto; right: 12px; }
 
 /* ----- hero ----- */
-.tbk .hero { padding: 64px 0 72px; border-bottom: 1px solid var(--rule); }
-.tbk .hero__grid {
-  display: grid; grid-template-columns: 6fr 5fr; gap: 56px; align-items: center;
-}
+.tbk .hero { padding: 72px 0 80px; border-bottom: 1px solid var(--rule); }
+.tbk .hero__copy { max-width: 760px; }
 .tbk .hero__copy .pill { margin-bottom: 24px; }
-.tbk .hero h1 { margin-bottom: 20px; max-width: 14ch; }
+.tbk .hero h1 { margin-bottom: 20px; max-width: 22ch; }
 .tbk .hero h1 em { font-family: var(--font-display); font-style: italic; color: var(--primary); font-weight: 500; }
 html.tibbak[lang="ar"] .tbk .hero h1 em { font-family: var(--font-display); }
-.tbk .hero__lede { max-width: 46ch; margin-bottom: 32px; }
+.tbk .hero__lede { max-width: 64ch; margin-bottom: 12px; }
+.tbk .hero__lede2 { max-width: 64ch; font-size: 15px; color: var(--ink-mute); margin-bottom: 32px; }
 .tbk .hero__cta { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; }
-.tbk .hero__trust { display: flex; gap: 32px; margin-top: 36px; flex-wrap: wrap; }
+.tbk .hero__trust { display: flex; gap: 28px; margin-top: 40px; flex-wrap: wrap; }
 .tbk .hero__trust > div { font-size: 13px; color: var(--ink-soft); display: flex; align-items: center; gap: 8px; }
 .tbk .hero__trust svg { color: var(--primary); flex-shrink: 0; }
-
-.tbk .hero__media {
-  position: relative; aspect-ratio: 4/4.6;
-  background: var(--paper-3);
-  border-radius: var(--tbk-radius-lg);
-  overflow: hidden;
-}
-.tbk .hero__media .placeholder { position: absolute; inset: 0; }
-.tbk .hero__media-badge {
-  position: absolute; top: 16px; left: 16px;
-  background: var(--paper); color: var(--ink);
-  padding: 8px 14px; border-radius: 999px;
-  font-size: 12px; font-weight: 600;
-  display: inline-flex; align-items: center; gap: 6px;
-}
-html.tibbak[dir="rtl"] .tbk .hero__media-badge { left: auto; right: 16px; }
 
 /* ----- bundle CTA card ----- */
 .tbk .bundle__wrap { padding: 0 var(--gutter); max-width: var(--max-w); margin: 0 auto; }
@@ -846,7 +829,6 @@ html.tibbak[dir="rtl"] .tbk .lang-toggle { direction: ltr; }
 
 /* ----- responsive ----- */
 @media (max-width: 980px) {
-  .tbk .hero__grid { grid-template-columns: 1fr; gap: 32px; }
   .tbk .bundle__inner { grid-template-columns: 1fr; }
   .tbk .bundle__copy { padding: 32px; }
   .tbk .bundle__media { min-height: 280px; }

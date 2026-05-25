@@ -14,7 +14,15 @@ class StoreController extends Controller
         $products = Product::where('is_active', true)
             ->orderBy('category')
             ->orderBy('name')
-            ->get(['id', 'name', 'slug', 'price', 'sale_price', 'category', 'stock_status', 'featured_image', 'excerpt', 'description', 'variants', 'allows_engraving']);
+            ->get([
+                'id', 'name', 'slug', 'price', 'sale_price', 'category',
+                'stock_status', 'featured_image', 'excerpt', 'description', 'variants',
+                'allows_engraving', 'engraving_price',
+                'allows_stitching', 'stitching_price',
+                'allows_sizes', 'available_sizes',
+                'allows_gender',
+                'allows_color', 'available_colors',
+            ]);
 
         $categories = $products->pluck('category')->unique()->filter()->values();
 

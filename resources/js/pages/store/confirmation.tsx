@@ -7,6 +7,11 @@ interface OrderItem {
     product_name: string;
     quantity: number;
     unit_price: string;
+    engraving_text: string | null;
+    stitching_text: string | null;
+    selected_size: string | null;
+    selected_gender: string | null;
+    selected_color: string | null;
 }
 
 interface Order {
@@ -88,11 +93,20 @@ export default function Confirmation({ order }: Props) {
                         <div className="eyebrow" style={{ marginBottom: 16 }}>Items Ordered</div>
                         <div style={{ display: 'grid', gap: 10 }}>
                             {order.items.map(item => (
-                                <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14 }}>
-                                    <span style={{ color: 'var(--ink-soft)' }}>
-                                        {item.product_name} <span style={{ color: 'var(--ink-mute)' }}>× {item.quantity}</span>
-                                    </span>
-                                    <span className="num" style={{ color: 'var(--ink)', fontWeight: 600 }}>
+                                <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, gap: 12 }}>
+                                    <div>
+                                        <span style={{ color: 'var(--ink-soft)' }}>
+                                            {item.product_name} <span style={{ color: 'var(--ink-mute)' }}>× {item.quantity}</span>
+                                        </span>
+                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px 12px', marginTop: 2 }}>
+                                            {item.selected_size   && <span style={{ fontSize: 12, color: 'var(--ink-mute)' }}>Size: {item.selected_size}</span>}
+                                            {item.selected_gender && <span style={{ fontSize: 12, color: 'var(--ink-mute)' }}>{item.selected_gender === 'male' ? 'Male' : 'Female'}</span>}
+                                            {item.selected_color  && <span style={{ fontSize: 12, color: 'var(--ink-mute)' }}>Color: {item.selected_color}</span>}
+                                            {item.engraving_text  && <span style={{ fontSize: 12, color: 'var(--ink-mute)', fontStyle: 'italic' }}>✎ {item.engraving_text}</span>}
+                                            {item.stitching_text  && <span style={{ fontSize: 12, color: 'var(--ink-mute)', fontStyle: 'italic' }}>✦ {item.stitching_text}</span>}
+                                        </div>
+                                    </div>
+                                    <span className="num" style={{ color: 'var(--ink)', fontWeight: 600, whiteSpace: 'nowrap' }}>
                                         JD {(Number(item.unit_price) * item.quantity).toFixed(2)}
                                     </span>
                                 </div>

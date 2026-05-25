@@ -3,7 +3,19 @@ import { useState } from 'react';
 import { ArrowLeft, Trash2, MapPin, Phone, Mail, Facebook, FileText, Package, Download } from 'lucide-react';
 import AdminLayout from '@/layouts/admin-layout';
 
-interface OrderItem { id: number; product_name: string; quantity: number; unit_price: string; cost_price: string | null; engraving_text: string | null; product: { id: number; name: string } | null }
+interface OrderItem {
+    id: number;
+    product_name: string;
+    quantity: number;
+    unit_price: string;
+    cost_price: string | null;
+    engraving_text: string | null;
+    stitching_text: string | null;
+    selected_size: string | null;
+    selected_gender: string | null;
+    selected_color: string | null;
+    product: { id: number; name: string } | null;
+}
 interface Order { id: number; customer_name: string; customer_phone: string; customer_email: string | null; customer_facebook: string | null; delivery_address: string; status: string; notes: string | null; total_amount: string; created_at: string; items: OrderItem[] }
 interface Props { order: Order }
 
@@ -22,16 +34,25 @@ function printReceipt(order: Order) {
     const shipping = 3;
     const total = subtotal + shipping;
 
-    const itemRows = order.items.map(i => `
+    const itemRows = order.items.map(i => {
+        const details = [
+            i.selected_size   ? `Size: ${i.selected_size}`   : '',
+            i.selected_gender ? (i.selected_gender === 'male' ? 'Male' : 'Female') : '',
+            i.selected_color  ? `Color: ${i.selected_color}` : '',
+            i.engraving_text  ? `✎ Engraving: ${i.engraving_text}` : '',
+            i.stitching_text  ? `✦ Stitching: ${i.stitching_text}` : '',
+        ].filter(Boolean);
+        return `
         <tr>
             <td style="padding:10px 0;border-bottom:1px solid #eee;">
                 ${i.product_name}
-                ${i.engraving_text ? `<br><span style="font-size:11px;color:#888;font-style:italic;">✎ Engraving: ${i.engraving_text}</span>` : ''}
+                ${details.map(d => `<br><span style="font-size:11px;color:#888;font-style:italic;">${d}</span>`).join('')}
             </td>
             <td style="padding:10px 8px;border-bottom:1px solid #eee;text-align:center;">${i.quantity}</td>
             <td style="padding:10px 0;border-bottom:1px solid #eee;text-align:right;font-family:monospace;">${Number(i.unit_price).toFixed(2)}</td>
             <td style="padding:10px 0;border-bottom:1px solid #eee;text-align:right;font-family:monospace;font-weight:600;">${(Number(i.unit_price) * i.quantity).toFixed(2)}</td>
-        </tr>`).join('');
+        </tr>`;
+    }).join('');
 
     const html = `<!DOCTYPE html>
 <html lang="en">
@@ -244,7 +265,16 @@ export default function OrderShow({ order }: Props) {
                                             <div className="w-7 h-7 rounded-lg bg-[#F2EDE0] dark:bg-[#1C2822] flex items-center justify-center shrink-0">
                                                 <Package className="w-3.5 h-3.5 text-[#6A746F] dark:text-[#4A5A55]" />
                                             </div>
-                                            <span className="font-semibold text-[#16201D] dark:text-[#EAE6DE]">{item.product_name}</span>
+                                            <div>
+                                                <span className="font-semibold text-[#16201D] dark:text-[#EAE6DE]">{item.product_name}</span>
+                                                <div className="flex flex-wrap gap-x-3 mt-0.5">
+                                                    {item.selected_size   && <span className="text-[11px] text-[#6A746F] dark:text-[#4A5A55]">Size: {item.selected_size}</span>}
+                                                    {item.selected_gender && <span className="text-[11px] text-[#6A746F] dark:text-[#4A5A55]">{item.selected_gender === 'male' ? 'Male' : 'Female'}</span>}
+                                                    {item.selected_color  && <span className="text-[11px] text-[#6A746F] dark:text-[#4A5A55]">Color: {item.selected_color}</span>}
+                                                    {item.engraving_text  && <span className="text-[11px] text-[#6A746F] dark:text-[#4A5A55] italic">✎ {item.engraving_text}</span>}
+                                                    {item.stitching_text  && <span className="text-[11px] text-[#6A746F] dark:text-[#4A5A55] italic">✦ {item.stitching_text}</span>}
+                                                </div>
+                                            </div>
                                         </div>
                                     </td>
                                     <td className="px-6 py-4 text-center text-[#6A746F] dark:text-[#4A5A55] font-mono">{item.quantity}</td>

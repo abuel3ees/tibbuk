@@ -285,12 +285,13 @@ html.tibbak[lang="ar"] .tbk .hero h1 em { font-family: var(--font-display); }
 .tbk .hero__trust { display: flex; gap: 28px; margin-top: 40px; flex-wrap: wrap; }
 .tbk .hero__trust > div { font-size: 13px; color: var(--ink-soft); display: flex; align-items: center; gap: 8px; }
 .tbk .hero__trust svg { color: var(--primary); flex-shrink: 0; }
-.tbk .hero__media { flex: 0 0 480px; max-width: 480px; border-radius: var(--tbk-radius-lg); overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,.12); }
-.tbk .hero__img { display: block; width: 100%; height: 420px; object-fit: cover; }
+.tbk .hero--with-image { padding-block: 48px; }
+.tbk .hero__media { flex: 0 0 460px; max-width: 460px; border-radius: var(--tbk-radius-lg); overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,.12); align-self: stretch; }
+.tbk .hero__img { display: block; width: 100%; height: 100%; object-fit: cover; min-height: 380px; }
 @media (max-width: 900px) {
   .tbk .hero__inner { flex-direction: column-reverse; gap: 36px; }
-  .tbk .hero__media { flex: none; width: 100%; max-width: 100%; }
-  .tbk .hero__img { height: 280px; }
+  .tbk .hero__media { flex: none; width: 100%; max-width: 100%; align-self: auto; }
+  .tbk .hero__img { height: auto; min-height: unset; max-height: 60vw; }
 }
 
 /* ----- bundle CTA card ----- */

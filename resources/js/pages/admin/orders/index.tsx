@@ -1,12 +1,20 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Trash2, ShoppingBag, ArrowRight, Search, X, Filter } from 'lucide-react';
+import { Trash2, ShoppingBag, ArrowRight, Search, X, Filter, Download } from 'lucide-react';
 import AdminLayout from '@/layouts/admin-layout';
 
 interface OrderItem { id: number; product_name: string; quantity: number; unit_price: string }
 interface Order { id: number; customer_name: string; customer_phone: string; customer_email: string | null; delivery_address: string; status: string; total_amount: string; created_at: string; items: OrderItem[] }
 interface PaginatedOrders { data: Order[]; current_page: number; last_page: number; total: number; links: { url: string | null; label: string; active: boolean }[] }
 interface Props { orders: PaginatedOrders; filters: { search?: string; status?: string } }
+
+function buildExportQuery(search: string, status: string): string {
+    const p = new URLSearchParams();
+    if (search) p.set('filter[search]', search);
+    if (status) p.set('filter[status]', status);
+    const qs = p.toString();
+    return qs ? `?${qs}` : '';
+}
 
 const STATUS_STYLES: Record<string, string> = {
     pending:    'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
@@ -65,6 +73,12 @@ export default function OrdersIndex({ orders, filters }: Props) {
                     <h1 className="text-3xl font-light text-[#16201D] dark:text-[#EAE6DE] tracking-tight">Orders</h1>
                     <p className="text-sm text-[#6A746F] dark:text-[#4A5A55] mt-1">{orders.total} total orders</p>
                 </div>
+                <a
+                    href={`/admin/orders/export${buildExportQuery(search, status)}`}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-[#D7CFBE] dark:border-[#2A3530] text-[#6A746F] dark:text-[#4A5A55] text-xs font-semibold hover:border-[#1F5B4A] dark:hover:border-[#3D9E7A] hover:text-[#1F5B4A] dark:hover:text-[#3D9E7A] transition-colors"
+                >
+                    <Download className="w-3.5 h-3.5" /> Export XLSX
+                </a>
             </div>
 
             {/* Filters */}

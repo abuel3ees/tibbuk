@@ -6,8 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Models\Order;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response as HttpResponse;
 use Inertia\Inertia;
 use Inertia\Response;
+use Rap2hpoutre\FastExcel\FastExcel;
 use Spatie\QueryBuilder\AllowedFilter;
 use Spatie\QueryBuilder\AllowedSort;
 use Spatie\QueryBuilder\QueryBuilder;
@@ -64,6 +66,47 @@ class OrderController extends Controller
         $order->delete();
 
         return redirect()->route('admin.orders.index')->with('success', 'Order deleted.');
+    }
+
+    public function export(Request $request)
+    {
+        $query = QueryBuilder::for(Order::with('items')->latest())
+            ->allowedFilters(
+                AllowedFilter::callback('search', function ($query, $value) {
+                    $lower = mb_strtolower($value);
+                    $query->where(function ($q) use ($lower) {
+                        $q->whereRaw('LOWER(customer_name) LIKE ?', ["%{$lower}%"])
+                          ->orWhereRaw('LOWER(customer_phone) LIKE ?', ["%{$lower}%"]);
+                    });
+                }),
+                AllowedFilter::exact('status'),
+            );
+
+        $orders = $query->get();
+
+        $rows = collect();
+        foreach ($orders as $order) {
+            $itemSummary = $order->items->map(fn ($i) =>
+                "{$i->product_name} x{$i->quantity} (JD " . number_format($i->unit_price, 2) . ")"
+            )->implode(' | ');
+
+            $rows->push([
+                'Order #'          => str_pad($order->id, 5, '0', STR_PAD_LEFT),
+                'Date'             => $order->created_at->format('Y-m-d H:i'),
+                'Customer'         => $order->customer_name,
+                'Phone'            => $order->customer_phone,
+                'Email'            => $order->customer_email ?? '',
+                'Facebook'         => $order->customer_facebook ?? '',
+                'Address'          => $order->delivery_address,
+                'Notes'            => $order->notes ?? '',
+                'Status'           => ucfirst($order->status),
+                'Total (JD)'       => number_format($order->total_amount, 2),
+                'Items'            => $itemSummary,
+            ]);
+        }
+
+        $filename = 'orders-' . now()->format('Y-m-d') . '.xlsx';
+        return (new FastExcel($rows))->download($filename);
     }
 
     public function financials(): Response

@@ -1076,30 +1076,37 @@ function HomePage({ lang, navigate, products, addToCart, heroImage, heroContent 
 
     return (
         <>
-            <section className="hero">
+            <section className={`hero${heroImage ? ' hero--with-image' : ''}`}>
                 <div className="wrap">
-                    <div className="hero__copy">
-                        <span className="pill"><span className="dot" />{pill}</span>
-                        <h1 className="h1">
-                            {title
-                                ? title
-                                : <>{t.hero.title_a}<em>{t.hero.title_em}</em>{t.hero.title_b}</>}
-                        </h1>
-                        <p className="body-lg hero__lede">{lede}</p>
-                        <p className="hero__lede2">{t.hero.lede2}</p>
-                        <div className="hero__cta">
-                            <button className="btn btn--lg" onClick={() => navigate('collection')}>
-                                {t.hero.cta_primary} <span className="arrow"><ArrowIcon /></span>
-                            </button>
-                            <button className="btn btn--ghost btn--lg" onClick={() => navigate('how')}>
-                                {t.hero.cta_ghost}
-                            </button>
+                    <div className="hero__inner">
+                        <div className="hero__copy">
+                            <span className="pill"><span className="dot" />{pill}</span>
+                            <h1 className="h1">
+                                {title
+                                    ? title
+                                    : <>{t.hero.title_a}<em>{t.hero.title_em}</em>{t.hero.title_b}</>}
+                            </h1>
+                            <p className="body-lg hero__lede">{lede}</p>
+                            <p className="hero__lede2">{t.hero.lede2}</p>
+                            <div className="hero__cta">
+                                <button className="btn btn--lg" onClick={() => navigate('collection')}>
+                                    {t.hero.cta_primary} <span className="arrow"><ArrowIcon /></span>
+                                </button>
+                                <button className="btn btn--ghost btn--lg" onClick={() => navigate('how')}>
+                                    {t.hero.cta_ghost}
+                                </button>
+                            </div>
+                            <div className="hero__trust">
+                                {t.hero.trust.map((tr, i) => (
+                                    <div key={i}><FeatureIcon kind={tr.i} /><span>{tr.t}</span></div>
+                                ))}
+                            </div>
                         </div>
-                        <div className="hero__trust">
-                            {t.hero.trust.map((tr, i) => (
-                                <div key={i}><FeatureIcon kind={tr.i} /><span>{tr.t}</span></div>
-                            ))}
-                        </div>
+                        {heroImage && (
+                            <div className="hero__media">
+                                <img src={heroImage} alt="Hero" className="hero__img" />
+                            </div>
+                        )}
                     </div>
                 </div>
             </section>

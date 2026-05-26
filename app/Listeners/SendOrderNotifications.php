@@ -6,9 +6,10 @@ use App\Events\OrderPlaced;
 use App\Mail\NewOrderAlert;
 use App\Models\User;
 use App\Notifications\OrderPlacedNotification;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Mail;
 
-class SendOrderNotifications
+class SendOrderNotifications implements ShouldQueue
 {
     public function handle(OrderPlaced $event): void
     {
@@ -23,7 +24,7 @@ class SendOrderNotifications
         // Send email alert to admin — wrapped so a missing/invalid API key doesn't crash the order
         try {
             $adminEmail = config('mail.admin_email', env('ADMIN_EMAIL', 'admin@medstore-jo.com'));
-            Mail::to($adminEmail)->send(new NewOrderAlert($order));
+            Mail::to($adminEmail)->queue(new NewOrderAlert($order));
         } catch (\Throwable) {
             // Mail is best-effort; order is already saved
         }

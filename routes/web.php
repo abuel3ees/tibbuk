@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\NotificationController;
 use App\Http\Controllers\Admin\OrderController as AdminOrderController;
+use App\Http\Controllers\Admin\MediaController;
 use App\Http\Controllers\Admin\ProductController as AdminProductController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\StoreController;
@@ -30,6 +31,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'verified'])->group(
     Route::put('/products/{product}', [AdminProductController::class, 'update'])->name('products.update');
     Route::delete('/products/{product}', [AdminProductController::class, 'destroy'])->name('products.destroy');
     Route::post('/products/bulk-visibility', [AdminProductController::class, 'bulkVisibility'])->name('products.bulk-visibility');
+    Route::post('/products/bulk-image', [AdminProductController::class, 'bulkImage'])->name('products.bulk-image');
 
     // Orders
     Route::get('/orders', [AdminOrderController::class, 'index'])->name('orders.index');
@@ -45,10 +47,14 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'verified'])->group(
     Route::delete('/settings/hero-image', [SettingsController::class, 'removeHeroImage'])->name('settings.hero-image.remove');
     Route::post('/settings/hero-content', [SettingsController::class, 'updateHeroContent'])->name('settings.hero-content');
 
-    // Notifications API
-    Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    // Media library
+    Route::get('/media', [MediaController::class, 'index'])->name('media.index');
+    Route::post('/media', [MediaController::class, 'store'])->name('media.store');
+    Route::delete('/media/{medium}', [MediaController::class, 'destroy'])->name('media.destroy');
+    Route::post('/media/{medium}/assign', [MediaController::class, 'assign'])->name('media.assign');
+
+    // Notifications
     Route::post('/notifications/read', [NotificationController::class, 'markRead'])->name('notifications.read');
-    Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount'])->name('notifications.unread-count');
 });
 
 require __DIR__.'/settings.php';

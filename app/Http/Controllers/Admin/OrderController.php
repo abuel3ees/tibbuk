@@ -8,17 +8,35 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+use Spatie\QueryBuilder\AllowedFilter;
+use Spatie\QueryBuilder\AllowedSort;
+use Spatie\QueryBuilder\QueryBuilder;
 
 class OrderController extends Controller
 {
-    public function index(): Response
+    public function index(Request $request): Response
     {
-        $orders = Order::with('items.product')
-            ->latest()
-            ->paginate(20);
+        $orders = QueryBuilder::for(Order::with('items.product')->latest())
+            ->allowedFilters(
+                AllowedFilter::callback('search', function ($query, $value) {
+                    $lower = mb_strtolower($value);
+                    $query->where(function ($q) use ($lower) {
+                        $q->whereRaw('LOWER(customer_name) LIKE ?', ["%{$lower}%"])
+                          ->orWhereRaw('LOWER(customer_phone) LIKE ?', ["%{$lower}%"]);
+                    });
+                }),
+                AllowedFilter::exact('status'),
+            )
+            ->allowedSorts(
+                AllowedSort::field('date', 'created_at'),
+                AllowedSort::field('total', 'total_amount'),
+            )
+            ->paginate(20)
+            ->withQueryString();
 
         return Inertia::render('admin/orders/index', [
-            'orders' => $orders,
+            'orders'  => $orders,
+            'filters' => $request->query('filter', []),
         ]);
     }
 

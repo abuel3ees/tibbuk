@@ -1,24 +1,33 @@
-import { Head, Link, router, useForm } from '@inertiajs/react';
+import { Head, Link, router, useForm, Deferred } from '@inertiajs/react';
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { Plus, Pencil, Trash2, Search, X, Upload, Eye, EyeOff, Filter, Package } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, X, Upload, Eye, EyeOff, Filter, Package, ImagePlus } from 'lucide-react';
 import AdminLayout from '@/layouts/admin-layout';
 
-interface Product { id: number; name: string; sku: string | null; category: string | null; price: string; sale_price: string | null; stock_status: string; is_active: boolean }
+interface Product { id: number; name: string; sku: string | null; category: string | null; price: string; sale_price: string | null; stock_status: string; is_active: boolean; featured_image: string | null }
 interface PaginatedProducts { data: Product[]; current_page: number; last_page: number; total: number; links: { url: string | null; label: string; active: boolean }[] }
-interface Props { products: PaginatedProducts; categories: string[]; filters: { search?: string; category?: string; stock?: string } }
+interface Props { products: PaginatedProducts; categories: string[]; filters: { search?: string; category?: string; stock?: string }; all_products?: Product[] }
 
 const inputCls = 'w-full border border-[#D7CFBE] dark:border-[#2A3530] bg-white dark:bg-[#141C19] text-[#16201D] dark:text-[#EAE6DE] text-sm focus:outline-none focus:border-[#1F5B4A] dark:focus:border-[#3D9E7A] transition-colors placeholder-[#B8B2A8] dark:placeholder-[#3A4A45]';
 
-export default function ProductsIndex({ products, categories, filters }: Props) {
+export default function ProductsIndex({ products, categories, filters, all_products }: Props) {
     const [search, setSearch] = useState(filters.search ?? '');
     const [category, setCategory] = useState(filters.category ?? '');
     const [stock, setStock] = useState(filters.stock ?? '');
     const [deleting, setDeleting] = useState<number | null>(null);
     const [importOpen, setImportOpen] = useState(false);
+    const [bulkImageOpen, setBulkImageOpen] = useState(false);
     const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     function applyFilters(overrides: Record<string, string>) {
-        const params = Object.fromEntries(Object.entries({ search, category, stock, ...overrides }).filter(([, v]) => v !== ''));
+        const s = overrides.search   !== undefined ? overrides.search   : search;
+        const c = overrides.category !== undefined ? overrides.category : category;
+        const k = overrides.stock    !== undefined ? overrides.stock    : stock;
+        const p = overrides.page;
+        const params: Record<string, string> = {};
+        if (s) params['filter[search]']   = s;
+        if (c) params['filter[category]'] = c;
+        if (k) params['filter[stock]']    = k;
+        if (p) params['page']             = p;
         router.get('/admin/products', params, { preserveState: true, preserveScroll: true, replace: true });
     }
 
@@ -61,6 +70,10 @@ export default function ProductsIndex({ products, categories, filters }: Props) 
                         className="flex items-center gap-2 px-3.5 py-2.5 rounded-lg border border-[#D7CFBE] dark:border-[#2A3530] bg-white dark:bg-[#141C19] text-[#6A746F] dark:text-[#9AA8A3] text-xs font-semibold hover:border-red-300 hover:text-red-500 dark:hover:text-red-400 transition-all shadow-sm">
                         <EyeOff className="w-3.5 h-3.5" /> All Hidden
                     </button>
+                    <button onClick={() => setBulkImageOpen(true)}
+                        className="flex items-center gap-2 px-3.5 py-2.5 rounded-lg border border-[#D7CFBE] dark:border-[#2A3530] bg-white dark:bg-[#141C19] text-[#6A746F] dark:text-[#9AA8A3] text-xs font-semibold hover:border-[#1F5B4A] dark:hover:border-[#3D9E7A] hover:text-[#1F5B4A] dark:hover:text-[#3D9E7A] transition-all shadow-sm">
+                        <ImagePlus className="w-3.5 h-3.5" /> Bulk Images
+                    </button>
                     <button onClick={() => setImportOpen(true)}
                         className="flex items-center gap-2 px-3.5 py-2.5 rounded-lg border border-[#D7CFBE] dark:border-[#2A3530] bg-white dark:bg-[#141C19] text-[#6A746F] dark:text-[#9AA8A3] text-xs font-semibold hover:border-[#1F5B4A] dark:hover:border-[#3D9E7A] hover:text-[#1F5B4A] dark:hover:text-[#3D9E7A] transition-all shadow-sm">
                         <Upload className="w-3.5 h-3.5" /> Import CSV
@@ -73,6 +86,15 @@ export default function ProductsIndex({ products, categories, filters }: Props) 
             </div>
 
             {importOpen && <ImportModal onClose={() => setImportOpen(false)} />}
+            {bulkImageOpen && (
+                <Deferred data="all_products" fallback={
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+                        <p className="text-white text-sm">Loading products…</p>
+                    </div>
+                }>
+                    <BulkImageModal all_products={all_products ?? []} onClose={() => setBulkImageOpen(false)} />
+                </Deferred>
+            )}
 
             {/* Filters */}
             <div className="flex flex-wrap gap-2.5 mb-5">
@@ -123,8 +145,17 @@ export default function ProductsIndex({ products, categories, filters }: Props) 
                         {products.data.map(product => (
                             <tr key={product.id} className="hover:bg-[#F8F5EE] dark:hover:bg-[#141C19] transition-colors group">
                                 <td className="px-6 py-4">
-                                    <p className="font-semibold text-[#16201D] dark:text-[#EAE6DE]">{product.name}</p>
-                                    {product.sku && <p className="text-[11px] text-[#6A746F] dark:text-[#4A5A55] mt-0.5 font-mono">{product.sku}</p>}
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-9 h-9 rounded-lg overflow-hidden bg-[#F2EDE0] dark:bg-[#1C2822] flex-shrink-0 flex items-center justify-center">
+                                            {product.featured_image
+                                                ? <img src={product.featured_image} alt="" className="w-full h-full object-cover" />
+                                                : <Package className="w-4 h-4 text-[#B8B2A8] dark:text-[#3A4A45]" />}
+                                        </div>
+                                        <div>
+                                            <p className="font-semibold text-[#16201D] dark:text-[#EAE6DE]">{product.name}</p>
+                                            {product.sku && <p className="text-[11px] text-[#6A746F] dark:text-[#4A5A55] mt-0.5 font-mono">{product.sku}</p>}
+                                        </div>
+                                    </div>
                                 </td>
                                 <td className="px-6 py-4 text-[#6A746F] dark:text-[#4A5A55] hidden md:table-cell">{product.category ?? '—'}</td>
                                 <td className="px-6 py-4 font-mono tabular-nums">
@@ -195,6 +226,174 @@ export default function ProductsIndex({ products, categories, filters }: Props) 
                 </div>
             )}
         </AdminLayout>
+    );
+}
+
+function BulkImageModal({ all_products: allProducts, onClose }: { all_products: Product[]; onClose: () => void }) {
+    const { data, setData, post, processing, progress } = useForm<{ images: Record<string, File> }>({ images: {} });
+    const [previews, setPreviews] = useState<Record<number, string>>({});
+    const [showAll, setShowAll] = useState(false);
+
+    const [bulkSearch, setBulkSearch] = useState('');
+    const base = showAll ? allProducts : allProducts.filter(p => !p.featured_image);
+    const displayed = bulkSearch
+        ? base.filter(p => p.name.toLowerCase().includes(bulkSearch.toLowerCase()) || (p.sku ?? '').toLowerCase().includes(bulkSearch.toLowerCase()))
+        : base;
+
+    function pickFile(productId: number, file: File) {
+        setData('images', { ...data.images, [productId]: file });
+        const url = URL.createObjectURL(file);
+        setPreviews(prev => ({ ...prev, [productId]: url }));
+    }
+
+    function removeFile(productId: number) {
+        const imgs = { ...data.images };
+        delete imgs[productId];
+        setData('images', imgs);
+        setPreviews(prev => {
+            if (prev[productId]) URL.revokeObjectURL(prev[productId]);
+            const n = { ...prev }; delete n[productId]; return n;
+        });
+    }
+
+    useEffect(() => () => { Object.values(previews).forEach(URL.revokeObjectURL); }, []);
+
+    function handleSubmit(e: React.FormEvent) {
+        e.preventDefault();
+        if (Object.keys(data.images).length === 0) return;
+        post('/admin/products/bulk-image', { forceFormData: true, onSuccess: onClose });
+    }
+
+    const pendingCount = Object.keys(data.images).length;
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 dark:bg-black/60 backdrop-blur-sm p-4">
+            <div className="bg-white dark:bg-[#0E1512] w-full max-w-2xl max-h-[90vh] rounded-2xl border border-[#E8E1D0] dark:border-[#1C2822] shadow-2xl flex flex-col overflow-hidden">
+                <div className="flex items-center justify-between px-7 py-5 border-b border-[#E8E1D0] dark:border-[#1C2822]">
+                    <div>
+                        <h2 className="font-semibold text-[#16201D] dark:text-[#EAE6DE]">Bulk Image Upload</h2>
+                        <p className="text-xs text-[#6A746F] dark:text-[#4A5A55] mt-0.5">
+                            {displayed.length} product{displayed.length !== 1 ? 's' : ''} shown
+                            {!showAll && allProducts.some(p => p.featured_image) && (
+                                <button onClick={() => setShowAll(true)} className="ml-2 text-[#1F5B4A] dark:text-[#3D9E7A] hover:underline">show all</button>
+                            )}
+                            {showAll && (
+                                <button onClick={() => setShowAll(false)} className="ml-2 text-[#1F5B4A] dark:text-[#3D9E7A] hover:underline">show missing only</button>
+                            )}
+                        </p>
+                    </div>
+                    <button onClick={onClose} className="w-8 h-8 rounded-lg flex items-center justify-center text-[#6A746F] dark:text-[#4A5A55] hover:bg-[#F2EDE0] dark:hover:bg-[#1C2822] transition-colors">
+                        <X className="w-4 h-4" />
+                    </button>
+                </div>
+
+                <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+                    <div className="px-7 py-3 border-b border-[#E8E1D0] dark:border-[#1C2822]">
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#B8B2A8] dark:text-[#3A4A45]" />
+                            <input
+                                value={bulkSearch}
+                                onChange={e => setBulkSearch(e.target.value)}
+                                placeholder="Search products…"
+                                className="w-full pl-9 pr-3 py-2 text-xs rounded-lg border border-[#D7CFBE] dark:border-[#2A3530] bg-white dark:bg-[#141C19] text-[#16201D] dark:text-[#EAE6DE] placeholder-[#B8B2A8] dark:placeholder-[#3A4A45] focus:outline-none focus:border-[#1F5B4A] dark:focus:border-[#3D9E7A]"
+                            />
+                        </div>
+                    </div>
+                    <div className="flex-1 overflow-y-auto px-7 py-4 space-y-2">
+                        {displayed.length === 0 && (
+                            <p className="text-sm text-center text-[#6A746F] dark:text-[#4A5A55] py-10">
+                                All products already have images.
+                                <button type="button" onClick={() => setShowAll(true)} className="ml-1 text-[#1F5B4A] dark:text-[#3D9E7A] hover:underline">Show all</button>
+                            </p>
+                        )}
+                        {displayed.map(product => {
+                            const preview = previews[product.id];
+                            const current = product.featured_image;
+                            const hasNew = !!data.images[product.id];
+                            return (
+                                <BulkImageRow
+                                    key={product.id}
+                                    product={product}
+                                    preview={preview}
+                                    current={current}
+                                    hasNew={hasNew}
+                                    onPick={pickFile}
+                                    onRemove={removeFile}
+                                />
+                            );
+                        })}
+                    </div>
+
+                    <div className="px-7 py-4 border-t border-[#E8E1D0] dark:border-[#1C2822] flex items-center gap-3">
+                        {progress && (
+                            <div className="w-full bg-[#F2EDE0] dark:bg-[#1C2822] h-1 rounded-full overflow-hidden absolute left-0 top-0">
+                                <div className="bg-[#1F5B4A] dark:bg-[#3D9E7A] h-full transition-all" style={{ width: `${progress.percentage}%` }} />
+                            </div>
+                        )}
+                        <button type="submit" disabled={pendingCount === 0 || processing}
+                            className="px-6 py-2.5 rounded-lg bg-[#1F5B4A] dark:bg-[#3D9E7A] text-white text-xs font-semibold hover:bg-[#2D7A65] dark:hover:bg-[#52B892] transition-colors disabled:opacity-40">
+                            {processing ? 'Uploading…' : `Upload ${pendingCount > 0 ? pendingCount + ' image' + (pendingCount !== 1 ? 's' : '') : ''}`}
+                        </button>
+                        <button type="button" onClick={onClose}
+                            className="px-5 py-2.5 rounded-lg text-xs font-semibold border border-[#D7CFBE] dark:border-[#2A3530] text-[#6A746F] dark:text-[#4A5A55] hover:border-[#6A746F] dark:hover:border-[#4A5A55] hover:text-[#16201D] dark:hover:text-[#EAE6DE] transition-all">
+                            Cancel
+                        </button>
+                        {pendingCount > 0 && (
+                            <span className="ml-auto text-xs text-[#6A746F] dark:text-[#4A5A55]">{pendingCount} selected</span>
+                        )}
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+}
+
+function BulkImageRow({ product, preview, current, hasNew, onPick, onRemove }: {
+    product: Product; preview?: string; current: string | null;
+    hasNew: boolean; onPick: (id: number, file: File) => void; onRemove: (id: number) => void;
+}) {
+    const inputRef = useRef<HTMLInputElement>(null);
+    const [dragOver, setDragOver] = useState(false);
+
+    const displayImage = preview ?? current;
+
+    return (
+        <div className={`flex items-center gap-4 p-3 rounded-xl border transition-all ${hasNew ? 'border-[#1F5B4A] dark:border-[#3D9E7A] bg-[#1F5B4A]/5 dark:bg-[#3D9E7A]/10' : 'border-[#E8E1D0] dark:border-[#1C2822] hover:border-[#D7CFBE] dark:hover:border-[#2A3530]'}`}>
+            {/* Thumbnail */}
+            <div className="w-12 h-12 rounded-lg overflow-hidden bg-[#F2EDE0] dark:bg-[#1C2822] flex-shrink-0 flex items-center justify-center">
+                {displayImage
+                    ? <img src={displayImage} alt="" className="w-full h-full object-cover" />
+                    : <Package className="w-5 h-5 text-[#B8B2A8] dark:text-[#3A4A45]" />}
+            </div>
+
+            {/* Name */}
+            <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-[#16201D] dark:text-[#EAE6DE] truncate">{product.name}</p>
+                {product.sku && <p className="text-[11px] text-[#6A746F] dark:text-[#4A5A55] font-mono">{product.sku}</p>}
+                {hasNew && <p className="text-[11px] text-[#1F5B4A] dark:text-[#3D9E7A] mt-0.5">New image selected</p>}
+            </div>
+
+            {/* Drop / pick zone */}
+            <div
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg border-2 border-dashed cursor-pointer transition-all text-xs ${dragOver ? 'border-[#1F5B4A] dark:border-[#3D9E7A] bg-[#1F5B4A]/10' : 'border-[#D7CFBE] dark:border-[#2A3530] hover:border-[#1F5B4A] dark:hover:border-[#3D9E7A]'} text-[#6A746F] dark:text-[#4A5A55]`}
+                onClick={() => inputRef.current?.click()}
+                onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={e => { e.preventDefault(); setDragOver(false); const f = e.dataTransfer.files[0]; if (f) onPick(product.id, f); }}
+            >
+                <ImagePlus className="w-3.5 h-3.5 flex-shrink-0" />
+                <span>{hasNew ? 'Change' : 'Pick image'}</span>
+                <input ref={inputRef} type="file" accept="image/*" className="hidden"
+                    onChange={e => { const f = e.target.files?.[0]; if (f) onPick(product.id, f); e.target.value = ''; }} />
+            </div>
+
+            {hasNew && (
+                <button type="button" onClick={() => onRemove(product.id)}
+                    className="w-7 h-7 rounded-lg flex items-center justify-center text-[#6A746F] dark:text-[#4A5A55] hover:bg-red-50 dark:hover:bg-red-950/30 hover:text-red-500 dark:hover:text-red-400 transition-all flex-shrink-0">
+                    <X className="w-3.5 h-3.5" />
+                </button>
+            )}
+        </div>
     );
 }
 

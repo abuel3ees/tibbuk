@@ -1,7 +1,7 @@
 import { Head, Link, useForm } from '@inertiajs/react';
 import { useRef, useState } from 'react';
 import AdminLayout from '@/layouts/admin-layout';
-import { ArrowLeft, Upload, X, Plus, List, ChevronDown, ChevronUp } from 'lucide-react';
+import { ArrowLeft, Upload, X, Plus, List, Images, Search } from 'lucide-react';
 
 interface Variant {
     value: string;
@@ -44,9 +44,17 @@ interface Product {
     variants: StoredVariant[] | null;
 }
 
+interface MediaItem {
+    id: number;
+    path: string;
+    url: string;
+    filename: string;
+}
+
 interface Props {
     product: Product | null;
     categories: string[];
+    media: MediaItem[];
 }
 
 function toFormVariant(sv: StoredVariant): Variant {
@@ -65,6 +73,7 @@ const defaultValues = {
     stock_status: 'in_stock',
     quantity: '',
     featured_image: null as File | null,
+    gallery_image_path: '',
     is_active: true,
     allows_engraving: false,
     engraving_price: '',
@@ -80,11 +89,12 @@ const defaultValues = {
 
 
 
-export default function ProductForm({ product, categories }: Props) {
+export default function ProductForm({ product, categories, media }: Props) {
     const isEdit = !!product;
     const fileRef = useRef<HTMLInputElement>(null);
     const [preview, setPreview] = useState<string | null>(product?.featured_image ?? null);
     const [dragOver, setDragOver] = useState(false);
+    const [galleryOpen, setGalleryOpen] = useState(false);
 
     // Profit margin is displayed/entered as JD amount; stored as cost_price in DB
     const [profitMargin, setProfitMargin] = useState<string>(() => {
@@ -124,6 +134,7 @@ export default function ProductForm({ product, categories }: Props) {
             stock_status: product.stock_status ?? 'in_stock',
             quantity: String(product.quantity ?? ''),
             featured_image: null as File | null,
+            gallery_image_path: '',
             is_active: product.is_active ?? true,
             allows_engraving: product.allows_engraving ?? false,
             engraving_price: product.engraving_price ?? '',
@@ -159,12 +170,19 @@ export default function ProductForm({ product, categories }: Props) {
     }
 
     function handleFile(file: File) {
-        setData('featured_image', file);
+        setData(d => ({ ...d, featured_image: file, gallery_image_path: '' }));
         setPreview(URL.createObjectURL(file));
     }
 
+    function handleGalleryPick(item: MediaItem) {
+        setData(d => ({ ...d, featured_image: null, gallery_image_path: item.path }));
+        setPreview(item.url);
+        setGalleryOpen(false);
+        if (fileRef.current) fileRef.current.value = '';
+    }
+
     function clearImage() {
-        setData('featured_image', null);
+        setData(d => ({ ...d, featured_image: null, gallery_image_path: '' }));
         setPreview(null);
         if (fileRef.current) fileRef.current.value = '';
     }
@@ -371,34 +389,40 @@ export default function ProductForm({ product, categories }: Props) {
                                         onError={e => (e.currentTarget.style.display = 'none')}
                                     />
                                     <div className="flex flex-col gap-2 pt-1">
-                                        <p className="text-xs text-stone-500">{data.featured_image?.name ?? 'Current image'}</p>
-                                        <button
-                                            type="button"
-                                            onClick={() => fileRef.current?.click()}
-                                            className="flex items-center gap-1.5 text-xs text-stone-500 hover:text-stone-900 transition-colors"
-                                        >
-                                            <Upload className="w-3.5 h-3.5" /> Replace image
+                                        <p className="text-xs text-stone-500">
+                                            {data.featured_image?.name ?? (data.gallery_image_path ? 'From gallery' : 'Current image')}
+                                        </p>
+                                        <button type="button" onClick={() => fileRef.current?.click()}
+                                            className="flex items-center gap-1.5 text-xs text-stone-500 hover:text-stone-900 transition-colors">
+                                            <Upload className="w-3.5 h-3.5" /> Upload new
                                         </button>
-                                        <button
-                                            type="button"
-                                            onClick={clearImage}
-                                            className="flex items-center gap-1.5 text-xs text-red-400 hover:text-red-600 transition-colors"
-                                        >
+                                        <button type="button" onClick={() => setGalleryOpen(true)}
+                                            className="flex items-center gap-1.5 text-xs text-stone-500 hover:text-stone-900 transition-colors">
+                                            <Images className="w-3.5 h-3.5" /> Pick from gallery
+                                        </button>
+                                        <button type="button" onClick={clearImage}
+                                            className="flex items-center gap-1.5 text-xs text-red-400 hover:text-red-600 transition-colors">
                                             <X className="w-3.5 h-3.5" /> Remove image
                                         </button>
                                     </div>
                                 </div>
                             ) : (
-                                <div
-                                    className={`border-2 border-dashed text-center py-10 px-6 cursor-pointer transition-colors ${dragOver ? 'border-stone-500 bg-stone-50' : 'border-stone-200 hover:border-stone-400'}`}
-                                    onClick={() => fileRef.current?.click()}
-                                    onDragOver={e => { e.preventDefault(); setDragOver(true); }}
-                                    onDragLeave={() => setDragOver(false)}
-                                    onDrop={e => { e.preventDefault(); setDragOver(false); const f = e.dataTransfer.files[0]; if (f) handleFile(f); }}
-                                >
-                                    <Upload className="w-6 h-6 mx-auto mb-2 text-stone-300" />
-                                    <p className="text-sm text-stone-400">Drop an image or click to browse</p>
-                                    <p className="text-xs text-stone-300 mt-1">JPG, PNG, WebP — max 20 MB</p>
+                                <div className="space-y-2">
+                                    <div
+                                        className={`border-2 border-dashed text-center py-8 px-6 cursor-pointer transition-colors ${dragOver ? 'border-stone-500 bg-stone-50' : 'border-stone-200 hover:border-stone-400'}`}
+                                        onClick={() => fileRef.current?.click()}
+                                        onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+                                        onDragLeave={() => setDragOver(false)}
+                                        onDrop={e => { e.preventDefault(); setDragOver(false); const f = e.dataTransfer.files[0]; if (f) handleFile(f); }}
+                                    >
+                                        <Upload className="w-6 h-6 mx-auto mb-2 text-stone-300" />
+                                        <p className="text-sm text-stone-400">Drop an image or click to upload</p>
+                                        <p className="text-xs text-stone-300 mt-1">JPG, PNG, WebP — max 20 MB · Also saves to gallery</p>
+                                    </div>
+                                    <button type="button" onClick={() => setGalleryOpen(true)}
+                                        className="flex items-center gap-2 w-full justify-center py-2.5 border border-stone-200 text-xs text-stone-500 hover:border-stone-400 hover:text-stone-900 transition-colors">
+                                        <Images className="w-3.5 h-3.5" /> Pick from gallery
+                                    </button>
                                 </div>
                             )}
 
@@ -407,10 +431,18 @@ export default function ProductForm({ product, categories }: Props) {
                                 type="file"
                                 accept="image/*"
                                 className="hidden"
-                                onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); }}
+                                onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ''; }}
                             />
                             {errors.featured_image && <p className="text-red-500 text-xs mt-2">{errors.featured_image}</p>}
                         </div>
+
+                        {galleryOpen && (
+                            <GalleryPickerModal
+                                media={media}
+                                onPick={handleGalleryPick}
+                                onClose={() => setGalleryOpen(false)}
+                            />
+                        )}
 
                         <div className="mt-6 flex items-center gap-3">
                             <input
@@ -617,6 +649,70 @@ function CustomizationsSection({ data, setData, errors }: {
                     )}
                 </div>
 
+            </div>
+        </div>
+    );
+}
+
+function GalleryPickerModal({ media, onPick, onClose }: {
+    media: MediaItem[];
+    onPick: (item: MediaItem) => void;
+    onClose: () => void;
+}) {
+    const [search, setSearch] = useState('');
+    const filtered = search
+        ? media.filter(m => m.filename.toLowerCase().includes(search.toLowerCase()))
+        : media;
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+            <div className="bg-white w-full max-w-3xl max-h-[85vh] flex flex-col rounded-xl border border-stone-200 shadow-2xl overflow-hidden">
+                <div className="flex items-center justify-between px-6 py-4 border-b border-stone-100">
+                    <h3 className="font-semibold text-stone-900">Pick from Gallery</h3>
+                    <button onClick={onClose} className="w-7 h-7 rounded-lg flex items-center justify-center text-stone-400 hover:bg-stone-100 transition-colors">
+                        <X className="w-4 h-4" />
+                    </button>
+                </div>
+                <div className="px-6 py-3 border-b border-stone-100">
+                    <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-stone-300" />
+                        <input
+                            autoFocus
+                            value={search}
+                            onChange={e => setSearch(e.target.value)}
+                            placeholder="Search gallery…"
+                            className="w-full pl-9 pr-3 py-2 text-sm border border-stone-200 focus:outline-none focus:border-stone-500 rounded-lg"
+                        />
+                    </div>
+                </div>
+                <div className="flex-1 overflow-y-auto p-6">
+                    {filtered.length === 0 ? (
+                        <p className="text-sm text-stone-400 text-center py-10">
+                            {media.length === 0 ? 'No images in gallery yet.' : 'No images match your search.'}
+                        </p>
+                    ) : (
+                        <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 gap-3">
+                            {filtered.map(item => (
+                                <button
+                                    key={item.id}
+                                    type="button"
+                                    onClick={() => onPick(item)}
+                                    className="group aspect-square rounded-lg overflow-hidden border-2 border-transparent hover:border-stone-900 transition-all bg-stone-100"
+                                    title={item.filename}
+                                >
+                                    <img src={item.url} alt={item.filename} className="w-full h-full object-cover group-hover:opacity-90 transition-opacity" />
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </div>
+                {media.length === 0 && (
+                    <div className="px-6 py-4 border-t border-stone-100 text-center">
+                        <Link href="/admin/media" className="text-xs text-stone-500 hover:text-stone-900 underline">
+                            Go to Media Library to upload images
+                        </Link>
+                    </div>
+                )}
             </div>
         </div>
     );

@@ -1,12 +1,12 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { useState } from 'react';
-import { Trash2, ShoppingBag, ArrowRight } from 'lucide-react';
+import { useState, useRef, useCallback, useEffect } from 'react';
+import { Trash2, ShoppingBag, ArrowRight, Search, X, Filter } from 'lucide-react';
 import AdminLayout from '@/layouts/admin-layout';
 
 interface OrderItem { id: number; product_name: string; quantity: number; unit_price: string }
 interface Order { id: number; customer_name: string; customer_phone: string; customer_email: string | null; delivery_address: string; status: string; total_amount: string; created_at: string; items: OrderItem[] }
 interface PaginatedOrders { data: Order[]; current_page: number; last_page: number; total: number; links: { url: string | null; label: string; active: boolean }[] }
-interface Props { orders: PaginatedOrders }
+interface Props { orders: PaginatedOrders; filters: { search?: string; status?: string } }
 
 const STATUS_STYLES: Record<string, string> = {
     pending:    'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
@@ -17,8 +17,34 @@ const STATUS_STYLES: Record<string, string> = {
 
 const statuses = ['pending', 'processing', 'delivered', 'cancelled'];
 
-export default function OrdersIndex({ orders }: Props) {
+const inputCls = 'border border-[#D7CFBE] dark:border-[#2A3530] bg-white dark:bg-[#141C19] text-[#16201D] dark:text-[#EAE6DE] text-sm focus:outline-none focus:border-[#1F5B4A] dark:focus:border-[#3D9E7A] transition-colors placeholder-[#B8B2A8] dark:placeholder-[#3A4A45]';
+
+export default function OrdersIndex({ orders, filters }: Props) {
     const [updating, setUpdating] = useState<number | null>(null);
+    const [search, setSearch] = useState(filters.search ?? '');
+    const [status, setStatus] = useState(filters.status ?? '');
+    const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    function applyFilters(overrides: Record<string, string>) {
+        const s = overrides.search !== undefined ? overrides.search : search;
+        const st = overrides.status !== undefined ? overrides.status : status;
+        const p = overrides.page;
+        const params: Record<string, string> = {};
+        if (s)  params['filter[search]'] = s;
+        if (st) params['filter[status]'] = st;
+        if (p)  params['page'] = p;
+        router.get('/admin/orders', params, { preserveState: true, preserveScroll: true, replace: true });
+    }
+
+    const handleSearchChange = useCallback((value: string) => {
+        setSearch(value);
+        if (debounceRef.current) clearTimeout(debounceRef.current);
+        debounceRef.current = setTimeout(() => applyFilters({ search: value }), 350);
+    }, [status]);
+
+    useEffect(() => () => { if (debounceRef.current) clearTimeout(debounceRef.current); }, []);
+
+    const hasFilters = search || status;
 
     function updateStatus(orderId: number, status: string) {
         setUpdating(orderId);
@@ -34,11 +60,37 @@ export default function OrdersIndex({ orders }: Props) {
         <AdminLayout>
             <Head title="Orders — Admin" />
 
-            <div className="flex items-start justify-between mb-7 gap-4">
+            <div className="flex items-start justify-between mb-5 gap-4">
                 <div>
                     <h1 className="text-3xl font-light text-[#16201D] dark:text-[#EAE6DE] tracking-tight">Orders</h1>
                     <p className="text-sm text-[#6A746F] dark:text-[#4A5A55] mt-1">{orders.total} total orders</p>
                 </div>
+            </div>
+
+            {/* Filters */}
+            <div className="flex flex-wrap gap-2.5 mb-5">
+                <div className="relative flex-1 min-w-52">
+                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#B8B2A8] dark:text-[#3A4A45]" />
+                    <input value={search} onChange={e => handleSearchChange(e.target.value)}
+                        placeholder="Search by name or phone…"
+                        className={`${inputCls} pl-10 pr-9 py-2.5 rounded-lg w-full`} />
+                    {search && (
+                        <button onClick={() => handleSearchChange('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#B8B2A8] dark:text-[#3A4A45] hover:text-[#6A746F]">
+                            <X className="w-4 h-4" />
+                        </button>
+                    )}
+                </div>
+                <select value={status} onChange={e => { setStatus(e.target.value); applyFilters({ status: e.target.value }); }}
+                    className={`${inputCls} px-3 py-2.5 rounded-lg min-w-36`}>
+                    <option value="">All statuses</option>
+                    {statuses.map(s => <option key={s} value={s} className="capitalize">{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
+                </select>
+                {hasFilters && (
+                    <button onClick={() => { setSearch(''); setStatus(''); router.get('/admin/orders', {}, { preserveState: true, replace: true }); }}
+                        className="flex items-center gap-2 px-3.5 py-2.5 rounded-lg text-sm text-[#6A746F] dark:text-[#4A5A55] border border-[#D7CFBE] dark:border-[#2A3530] bg-white dark:bg-[#141C19] hover:text-[#16201D] dark:hover:text-[#EAE6DE] hover:border-[#6A746F] dark:hover:border-[#4A5A55] transition-all">
+                        <Filter className="w-3.5 h-3.5" /> Clear
+                    </button>
+                )}
             </div>
 
             <div className="rounded-xl bg-white dark:bg-[#0E1512] border border-[#E8E1D0] dark:border-[#1C2822] overflow-hidden shadow-sm">

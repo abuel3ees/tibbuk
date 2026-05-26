@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Media;
 use App\Models\Product;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -10,46 +11,51 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
+use Spatie\QueryBuilder\AllowedFilter;
+use Spatie\QueryBuilder\QueryBuilder;
 
 class ProductController extends Controller
 {
     public function index(Request $request): Response
     {
-        $query = Product::orderBy('category')->orderBy('name');
+        $products = QueryBuilder::for(Product::orderBy('category')->orderBy('name'))
+            ->allowedFilters(
+                AllowedFilter::callback('search', function ($query, $value) {
+                    $lower = mb_strtolower($value);
+                    $query->where(function ($q) use ($lower) {
+                        $q->whereRaw('LOWER(name) LIKE ?', ["%{$lower}%"])
+                          ->orWhereRaw('LOWER(sku) LIKE ?', ["%{$lower}%"])
+                          ->orWhereRaw('LOWER(category) LIKE ?', ["%{$lower}%"]);
+                    });
+                }),
+                AllowedFilter::exact('category'),
+                AllowedFilter::callback('stock', function ($query, $value) {
+                    if ($value === 'out') $query->where('stock_status', 'out_of_stock');
+                    elseif ($value === 'in') $query->where('stock_status', 'in_stock');
+                }),
+            )
+            ->allowedSorts('name', 'category', 'price', 'created_at')
+            ->paginate(25)
+            ->withQueryString();
 
-        if ($search = $request->input('search')) {
-            $lower = mb_strtolower($search);
-            $query->where(function ($q) use ($lower) {
-                $q->whereRaw('LOWER(name) LIKE ?', ["%{$lower}%"])
-                  ->orWhereRaw('LOWER(sku) LIKE ?', ["%{$lower}%"])
-                  ->orWhereRaw('LOWER(category) LIKE ?', ["%{$lower}%"]);
-            });
-        }
-
-        if ($category = $request->input('category')) {
-            $query->where('category', $category);
-        }
-
-        if ($request->input('stock') === 'out') {
-            $query->where('stock_status', 'out_of_stock');
-        } elseif ($request->input('stock') === 'in') {
-            $query->where('stock_status', 'in_stock');
-        }
-
-        $products = $query->paginate(25)->withQueryString();
         $categories = Product::distinct()->orderBy('category')->pluck('category')->filter()->values();
 
         return Inertia::render('admin/products/index', [
-            'products'   => $products,
-            'categories' => $categories,
-            'filters'    => $request->only(['search', 'category', 'stock']),
+            'products'    => $products,
+            'categories'  => $categories,
+            'filters'     => $request->query('filter', []),
+            'all_products' => Inertia::defer(fn () =>
+                Product::orderBy('category')->orderBy('name')
+                    ->get(['id', 'name', 'sku', 'category', 'featured_image'])
+            ),
         ]);
     }
 
     public function create(): Response
     {
         $categories = Product::distinct()->orderBy('category')->pluck('category')->filter()->values();
-        return Inertia::render('admin/products/form', ['product' => null, 'categories' => $categories]);
+        $media = Media::orderByDesc('created_at')->get(['id', 'path', 'filename', 'url']);
+        return Inertia::render('admin/products/form', ['product' => null, 'categories' => $categories, 'media' => $media]);
     }
 
     public function store(Request $request): RedirectResponse
@@ -58,8 +64,14 @@ class ProductController extends Controller
         $validated['slug'] = $this->uniqueSlug($validated['name']);
 
         if ($request->hasFile('featured_image')) {
-            $validated['featured_image'] = $request->file('featured_image')->store('products', 'spaces');
+            $file = $request->file('featured_image');
+            $path = $file->store('products', 'spaces');
+            Media::create(['path' => $path, 'filename' => $file->getClientOriginalName(), 'size' => $file->getSize()]);
+            $validated['featured_image'] = $path;
+        } elseif (!empty($validated['gallery_image_path'])) {
+            $validated['featured_image'] = $validated['gallery_image_path'];
         }
+        unset($validated['gallery_image_path']);
 
         $variants = $validated['variants'] ?? [];
         $validated['variants'] = $this->processVariantImages($request, $variants);
@@ -72,7 +84,8 @@ class ProductController extends Controller
     public function edit(Product $product): Response
     {
         $categories = Product::distinct()->orderBy('category')->pluck('category')->filter()->values();
-        return Inertia::render('admin/products/form', ['product' => $product, 'categories' => $categories]);
+        $media = Media::orderByDesc('created_at')->get(['id', 'path', 'filename', 'url']);
+        return Inertia::render('admin/products/form', ['product' => $product, 'categories' => $categories, 'media' => $media]);
     }
 
     public function update(Request $request, Product $product): RedirectResponse
@@ -88,10 +101,16 @@ class ProductController extends Controller
             if ($old && !str_starts_with($old, 'http')) {
                 Storage::disk('spaces')->delete($old);
             }
-            $validated['featured_image'] = $request->file('featured_image')->store('products', 'spaces');
+            $file = $request->file('featured_image');
+            $path = $file->store('products', 'spaces');
+            Media::create(['path' => $path, 'filename' => $file->getClientOriginalName(), 'size' => $file->getSize()]);
+            $validated['featured_image'] = $path;
+        } elseif (!empty($validated['gallery_image_path'])) {
+            $validated['featured_image'] = $validated['gallery_image_path'];
         } else {
             unset($validated['featured_image']);
         }
+        unset($validated['gallery_image_path']);
 
         $variants = $validated['variants'] ?? [];
         $rawVariants = $product->getRawOriginal('variants');
@@ -124,6 +143,30 @@ class ProductController extends Controller
         $label = $active ? 'active' : 'hidden';
         return redirect()->route('admin.products.index')
             ->with('success', "All products set to {$label}.");
+    }
+
+    public function bulkImage(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'images'   => ['required', 'array', 'min:1'],
+            'images.*' => ['image', 'max:20480'],
+        ]);
+
+        foreach ($request->file('images', []) as $productId => $file) {
+            $product = Product::find((int) $productId);
+            if (!$product || !$file->isValid()) continue;
+
+            $old = $product->getRawOriginal('featured_image');
+            if ($old && !str_starts_with($old, 'http')) {
+                Storage::disk('spaces')->delete($old);
+            }
+
+            $path = $file->store('products', 'spaces');
+            Media::create(['path' => $path, 'filename' => $file->getClientOriginalName(), 'size' => $file->getSize()]);
+            $product->update(['featured_image' => $path]);
+        }
+
+        return redirect()->route('admin.products.index')->with('success', 'Images updated successfully.');
     }
 
     public function import(Request $request): RedirectResponse
@@ -279,7 +322,8 @@ class ProductController extends Controller
             'category'      => ['nullable', 'string', 'max:255'],
             'stock_status'  => ['required', 'in:in_stock,out_of_stock'],
             'quantity'      => ['nullable', 'integer', 'min:0'],
-            'featured_image'   => ['nullable', 'image', 'max:20480'],
+            'featured_image'    => ['nullable', 'image', 'max:20480'],
+            'gallery_image_path' => ['nullable', 'string', 'max:500'],
             'is_active'        => ['boolean'],
             'allows_engraving' => ['boolean'],
             'engraving_price'  => ['nullable', 'numeric', 'min:0'],

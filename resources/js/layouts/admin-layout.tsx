@@ -1,6 +1,6 @@
-import { Link, usePage } from '@inertiajs/react';
-import { LayoutDashboard, Package, ShoppingBag, TrendingUp, LogOut, Menu, X, Sun, Moon } from 'lucide-react';
-import { useState, useEffect, createContext, useContext } from 'react';
+import { Link, router, usePage } from '@inertiajs/react';
+import { LayoutDashboard, Package, ShoppingBag, TrendingUp, LogOut, Menu, X, Sun, Moon, Images, Bell } from 'lucide-react';
+import { useState, useEffect, useRef, createContext, useContext } from 'react';
 
 interface Props { children: React.ReactNode }
 
@@ -8,11 +8,89 @@ interface ThemeCtx { dark: boolean }
 const ThemeContext = createContext<ThemeCtx>({ dark: true });
 export function useAdminTheme() { return useContext(ThemeContext); }
 
+interface Notification {
+    id: string;
+    data: { message?: string; order_id?: number; customer_name?: string; total_amount?: number };
+    read_at: string | null;
+    created_at: string;
+}
+
+function NotificationBell() {
+    const { unread_count, notifications } = usePage().props as unknown as {
+        unread_count: number;
+        notifications?: Notification[];
+    };
+    const [open, setOpen] = useState(false);
+    const ref = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        function handler(e: MouseEvent) {
+            if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+        }
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, []);
+
+    function markRead() {
+        router.post('/admin/notifications/read', {}, { preserveState: true, preserveScroll: true });
+    }
+
+    return (
+        <div ref={ref} className="relative px-3 py-2">
+            <button
+                onClick={() => { setOpen(o => !o); if (!open && unread_count > 0) markRead(); }}
+                className="relative flex items-center gap-2 text-[#6A746F] dark:text-[#4A5A55] hover:text-[#16201D] dark:hover:text-[#EAE6DE] transition-colors"
+            >
+                <Bell className="w-4 h-4" />
+                {unread_count > 0 && (
+                    <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[#1F5B4A] dark:bg-[#3D9E7A] text-white text-[9px] flex items-center justify-center font-medium">
+                        {unread_count > 9 ? '9+' : unread_count}
+                    </span>
+                )}
+                <span className="text-sm font-medium">Notifications</span>
+            </button>
+            {open && (
+                <div className="absolute left-0 right-0 mt-2 mx-3 z-50 bg-[#FBF8F2] dark:bg-[#0E1512] border border-[#D7CFBE] dark:border-[#1C2822] rounded-lg shadow-lg overflow-hidden">
+                    {!notifications ? (
+                        <p className="px-4 py-3 text-xs text-[#6A746F] dark:text-[#4A5A55]">Loading…</p>
+                    ) : notifications.length === 0 ? (
+                        <p className="px-4 py-3 text-xs text-[#6A746F] dark:text-[#4A5A55]">No notifications</p>
+                    ) : (
+                        <ul className="max-h-80 overflow-y-auto divide-y divide-[#D7CFBE] dark:divide-[#1C2822]">
+                            {notifications.map(n => (
+                                <li key={n.id} className={`px-4 py-3 ${!n.read_at ? 'bg-[#EAE6DE]/50 dark:bg-[#1C2822]/50' : ''}`}>
+                                    <p className="text-xs text-[#16201D] dark:text-[#EAE6DE] leading-snug">
+                                        {n.data.message ?? `Order #${n.data.order_id}`}
+                                    </p>
+                                    {n.data.customer_name && (
+                                        <p className="text-[10px] text-[#6A746F] dark:text-[#4A5A55] mt-0.5">
+                                            {n.data.customer_name}
+                                            {n.data.total_amount ? ` · ${n.data.total_amount} JOD` : ''}
+                                        </p>
+                                    )}
+                                    <Link
+                                        href={`/admin/orders/${n.data.order_id}`}
+                                        className="text-[10px] text-[#1F5B4A] dark:text-[#3D9E7A] mt-1 block hover:underline"
+                                        onClick={() => setOpen(false)}
+                                    >
+                                        View order →
+                                    </Link>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+}
+
 const nav = [
     { href: '/admin',            label: 'Dashboard', icon: LayoutDashboard },
     { href: '/admin/products',   label: 'Products',  icon: Package },
     { href: '/admin/orders',     label: 'Orders',    icon: ShoppingBag },
     { href: '/admin/financials', label: 'Financials',icon: TrendingUp },
+    { href: '/admin/media',      label: 'Media',     icon: Images },
 ];
 
 export default function AdminLayout({ children }: Props) {
@@ -81,6 +159,7 @@ export default function AdminLayout({ children }: Props) {
 
                         {/* Footer */}
                         <div className="px-3 py-4 space-y-0.5 border-t border-[#D7CFBE] dark:border-[#1C2822]">
+                            <NotificationBell />
                             <button
                                 onClick={() => setDark(d => !d)}
                                 className="flex items-center gap-3 px-4 py-2.5 rounded-md text-sm w-full text-left transition-all duration-150 text-[#6A746F] dark:text-[#4A5A55] hover:bg-[#E8E1D0] dark:hover:bg-[#1C2822] hover:text-[#16201D] dark:hover:text-[#EAE6DE]"

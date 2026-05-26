@@ -31,6 +31,27 @@ class Setting extends Model
         return Storage::disk('spaces')->url($path);
     }
 
+    public static function heroImages(): array
+    {
+        $raw = static::get('hero_images');
+        $paths = $raw ? json_decode($raw, true) : [];
+        if (empty($paths)) {
+            // fall back to legacy single image
+            $url = static::heroImageUrl();
+            return $url ? [$url] : [];
+        }
+        return array_map(function (string $path) {
+            if (str_starts_with($path, 'http')) return $path;
+            return Storage::disk('spaces')->url($path);
+        }, $paths);
+    }
+
+    public static function heroImagePaths(): array
+    {
+        $raw = static::get('hero_images');
+        return $raw ? (json_decode($raw, true) ?? []) : [];
+    }
+
     public static function heroContent(): array
     {
         return [

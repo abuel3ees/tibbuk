@@ -10,21 +10,42 @@ use Illuminate\Support\Facades\Storage;
 
 class SettingsController extends Controller
 {
-    public function updateHeroImage(Request $request): RedirectResponse
+    public function addHeroImages(Request $request): RedirectResponse
     {
         $request->validate([
-            'hero_image' => ['required', 'image', 'max:8192'],
+            'images'   => ['required', 'array', 'min:1'],
+            'images.*' => ['required', 'image', 'max:8192'],
         ]);
 
-        $old = Setting::get('hero_image');
-        if ($old && !str_starts_with($old, 'http')) {
-            Storage::disk('spaces')->delete($old);
+        $paths = Setting::heroImagePaths();
+
+        foreach ($request->file('images') as $file) {
+            $paths[] = $file->store('settings', 'spaces');
         }
 
-        $path = $request->file('hero_image')->store('settings', 'spaces');
-        Setting::set('hero_image', $path);
+        Setting::set('hero_images', json_encode(array_values($paths)));
 
-        return back()->with('success', 'Hero image updated.');
+        return back()->with('success', 'Hero image(s) added.');
+    }
+
+    public function removeHeroImage(Request $request): RedirectResponse
+    {
+        $request->validate(['index' => ['required', 'integer', 'min:0']]);
+
+        $paths = Setting::heroImagePaths();
+        $index = (int) $request->input('index');
+
+        if (isset($paths[$index])) {
+            $old = $paths[$index];
+            if (!str_starts_with($old, 'http')) {
+                Storage::disk('spaces')->delete($old);
+            }
+            array_splice($paths, $index, 1);
+        }
+
+        Setting::set('hero_images', json_encode(array_values($paths)));
+
+        return back()->with('success', 'Image removed.');
     }
 
     public function updateHeroContent(Request $request): RedirectResponse
@@ -45,14 +66,15 @@ class SettingsController extends Controller
         return back()->with('success', 'Hero content updated.');
     }
 
-    public function removeHeroImage(): RedirectResponse
+    // Legacy single-image endpoints kept for backward compat
+    public function updateHeroImage(Request $request): RedirectResponse
     {
-        $old = Setting::get('hero_image');
-        if ($old && !str_starts_with($old, 'http')) {
-            Storage::disk('spaces')->delete($old);
-        }
-        Setting::set('hero_image', null);
+        $request->validate(['hero_image' => ['required', 'image', 'max:8192']]);
 
-        return back()->with('success', 'Hero image removed.');
+        $paths   = Setting::heroImagePaths();
+        $paths[] = $request->file('hero_image')->store('settings', 'spaces');
+        Setting::set('hero_images', json_encode(array_values($paths)));
+
+        return back()->with('success', 'Hero image added.');
     }
 }

@@ -1049,12 +1049,77 @@ function Toast({ message, on }: { message: string; on: boolean }) {
 }
 
 // ---- HOME PAGE ----
-function HomePage({ lang, navigate, products, addToCart, heroImage, heroContent }: {
+function HeroSlideshow({ images }: { images: string[] }) {
+    const [current, setCurrent] = useState(0);
+    const [prev, setPrev] = useState<number | null>(null);
+    const [transitioning, setTransitioning] = useState(false);
+    const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    function advance(to: number) {
+        if (transitioning || images.length < 2) return;
+        setPrev(current);
+        setTransitioning(true);
+        setCurrent(to);
+        setTimeout(() => { setPrev(null); setTransitioning(false); }, 900);
+    }
+
+    useEffect(() => {
+        if (images.length < 2) return;
+        timerRef.current = setInterval(() => {
+            setCurrent(c => {
+                const next = (c + 1) % images.length;
+                setPrev(c);
+                setTransitioning(true);
+                setTimeout(() => { setPrev(null); setTransitioning(false); }, 900);
+                return next;
+            });
+        }, 5000);
+        return () => { if (timerRef.current) clearInterval(timerRef.current); };
+    }, [images.length]);
+
+    function resetTimer() {
+        if (timerRef.current) clearInterval(timerRef.current);
+        timerRef.current = setInterval(() => {
+            setCurrent(c => {
+                const next = (c + 1) % images.length;
+                setPrev(c);
+                setTransitioning(true);
+                setTimeout(() => { setPrev(null); setTransitioning(false); }, 900);
+                return next;
+            });
+        }, 5000);
+    }
+
+    return (
+        <div className="hero__media">
+            <div className="hero__slides">
+                {prev !== null && (
+                    <img key={`prev-${prev}`} src={images[prev]} alt="" className="hero__slide hero__slide--out" />
+                )}
+                <img key={`curr-${current}`} src={images[current]} alt="Hero" className={`hero__slide hero__slide--in${transitioning ? ' hero__slide--entering' : ''}`} />
+            </div>
+            {images.length > 1 && (
+                <div className="hero__dots">
+                    {images.map((_, i) => (
+                        <button
+                            key={i}
+                            className={`hero__dot${i === current ? ' hero__dot--active' : ''}`}
+                            onClick={() => { advance(i); resetTimer(); }}
+                            aria-label={`Slide ${i + 1}`}
+                        />
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
+function HomePage({ lang, navigate, products, addToCart, heroImages, heroContent }: {
     lang: Lang;
     navigate: (r: string, pid?: number | null, cat?: string | null) => void;
     products: Product[];
     addToCart: (id: number, variant?: string | null, engraving?: string, stitching?: string, size?: string, gender?: string, color?: string) => void;
-    heroImage: string | null;
+    heroImages: string[];
     heroContent: HeroContent;
 }) {
     const t = COPY[lang];
@@ -1076,7 +1141,7 @@ function HomePage({ lang, navigate, products, addToCart, heroImage, heroContent 
 
     return (
         <>
-            <section className={`hero${heroImage ? ' hero--with-image' : ''}`}>
+            <section className={`hero${heroImages.length > 0 ? ' hero--with-image' : ''}`}>
                 <div className="wrap">
                     <div className="hero__inner">
                         <div className="hero__copy">
@@ -1102,11 +1167,7 @@ function HomePage({ lang, navigate, products, addToCart, heroImage, heroContent 
                                 ))}
                             </div>
                         </div>
-                        {heroImage && (
-                            <div className="hero__media">
-                                <img src={heroImage} alt="Hero" className="hero__img" />
-                            </div>
-                        )}
+                        {heroImages.length > 0 && <HeroSlideshow images={heroImages} />}
                     </div>
                 </div>
             </section>
@@ -1966,11 +2027,11 @@ interface HeroContent {
 interface Props {
     products: Product[];
     categories: string[];
-    hero_image: string | null;
+    hero_images: string[];
     hero_content: HeroContent;
 }
 
-export default function StoreIndex({ products, hero_image, hero_content }: Props) {
+export default function StoreIndex({ products, hero_images, hero_content }: Props) {
     const [lang, setLang] = useState<Lang>('en');
     const [dark, setDark] = useState<boolean>(() => {
         try { return localStorage.getItem('tbk_dark') !== 'false'; } catch { return true; }
@@ -2080,7 +2141,7 @@ export default function StoreIndex({ products, hero_image, hero_content }: Props
             <MetaStrip t={COPY[lang]} />
             <Header lang={lang} setLang={setLang} dark={dark} setDark={setDark} route={route} navigate={navigate} cartCount={cartCount} openCart={() => setCartOpen(true)} openSearch={() => setSearchOpen(true)} />
             <main id="main">
-                {route === 'home' && <HomePage lang={lang} navigate={navigate} products={products} addToCart={addToCart} heroImage={hero_image} heroContent={hero_content} />}
+                {route === 'home' && <HomePage lang={lang} navigate={navigate} products={products} addToCart={addToCart} heroImages={hero_images} heroContent={hero_content} />}
                 {route === 'collection' && <CollectionPage lang={lang} products={products} navigate={navigate} addToCart={addToCart} initialCat={initialCat} />}
                 {route === 'product' && productId !== null && <ProductPage lang={lang} productId={productId} navigate={navigate} products={products} addToCart={addToCart} />}
                 {route === 'how' && <HowPage lang={lang} navigate={navigate} />}

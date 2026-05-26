@@ -8,7 +8,7 @@ interface Financials { total_revenue: number; total_cost: number; net_profit: nu
 interface Order { id: number; customer_name: string; customer_phone: string; status: string; total_amount: string; created_at: string }
 interface Notification { id: string; data: { message: string; order_id: number; customer_name: string; total_amount: string }; created_at: string; read_at: string | null }
 interface HeroContent { pill_en: string | null; pill_ar: string | null; title_en: string | null; title_ar: string | null; lede_en: string | null; lede_ar: string | null }
-interface Props { stats: Stats; financials: Financials; recentOrders: Order[]; hero_image: string | null; hero_content: HeroContent }
+interface Props { stats: Stats; financials: Financials; recentOrders: Order[]; hero_images: string[]; hero_content: HeroContent }
 
 const STATUS_STYLES: Record<string, string> = {
     pending:    'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
@@ -17,7 +17,7 @@ const STATUS_STYLES: Record<string, string> = {
     cancelled:  'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400',
 };
 
-export default function Dashboard({ stats, financials, recentOrders, hero_image, hero_content }: Props) {
+export default function Dashboard({ stats, financials, recentOrders, hero_images, hero_content }: Props) {
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [notifOpen, setNotifOpen] = useState(false);
     const [unreadCount, setUnreadCount] = useState(0);
@@ -143,7 +143,7 @@ export default function Dashboard({ stats, financials, recentOrders, hero_image,
 
             {/* Site settings */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <HeroImageCard current={hero_image} />
+                <HeroImageCard images={hero_images} />
                 <HeroContentCard content={hero_content} />
             </div>
 
@@ -221,53 +221,71 @@ function FinancialItem({ label, value, dim, highlight }: { label: string; value:
     );
 }
 
-function HeroImageCard({ current }: { current: string | null }) {
-    const { data, setData, post, processing, errors } = useForm<{ hero_image: File | null }>({ hero_image: null });
-    const [preview, setPreview] = useState<string | null>(current);
+function HeroImageCard({ images }: { images: string[] }) {
+    const { data, setData, post, processing } = useForm<{ images: File[] }>({ images: [] });
     const inputRef = useRef<HTMLInputElement>(null);
 
-    function handleFile(file: File) { setData('hero_image', file); setPreview(URL.createObjectURL(file)); }
-    function handleSubmit(e: React.FormEvent) { e.preventDefault(); if (!data.hero_image) return; post('/admin/settings/hero-image', { forceFormData: true, onSuccess: () => setData('hero_image', null) }); }
-    function handleRemove() { if (!confirm('Remove hero image?')) return; router.delete('/admin/settings/hero-image'); setPreview(null); }
+    function handleFiles(files: FileList | null) {
+        if (!files) return;
+        setData('images', [...data.images, ...Array.from(files)]);
+    }
+
+    function handleSubmit(e: React.FormEvent) {
+        e.preventDefault();
+        if (!data.images.length) return;
+        post('/admin/settings/hero-images', { forceFormData: true, onSuccess: () => setData('images', []) });
+    }
+
+    function removeImage(index: number) {
+        if (!confirm('Remove this hero image?')) return;
+        router.delete('/admin/settings/hero-images', { data: { index }, preserveScroll: true });
+    }
 
     return (
         <div className="rounded-xl bg-white dark:bg-[#0E1512] border border-[#E8E1D0] dark:border-[#1C2822] overflow-hidden shadow-sm">
             <div className="px-6 py-4 border-b border-[#E8E1D0] dark:border-[#1C2822]">
-                <h2 className="font-semibold text-[#16201D] dark:text-[#EAE6DE]">Hero Image</h2>
-                <p className="text-xs text-[#6A746F] dark:text-[#4A5A55] mt-0.5">Shown on the store homepage. Max 20 MB.</p>
+                <h2 className="font-semibold text-[#16201D] dark:text-[#EAE6DE]">Hero Slideshow</h2>
+                <p className="text-xs text-[#6A746F] dark:text-[#4A5A55] mt-0.5">{images.length} image{images.length !== 1 ? 's' : ''} · cycles automatically · max 8 MB each</p>
             </div>
-            <div className="p-6 flex gap-5 items-start">
-                <div
-                    className="relative w-40 h-28 rounded-lg border-2 border-dashed border-[#D7CFBE] dark:border-[#2A3530] bg-[#F8F5EE] dark:bg-[#141C19] flex items-center justify-center cursor-pointer hover:border-[#1F5B4A] dark:hover:border-[#3D9E7A] transition-colors shrink-0 overflow-hidden group"
-                    onClick={() => inputRef.current?.click()}
-                >
-                    {preview ? (
-                        <img src={preview} alt="Hero" className="w-full h-full object-cover" />
-                    ) : (
-                        <div className="flex flex-col items-center gap-2 text-[#B8B2A8] dark:text-[#3A4A45] group-hover:text-[#1F5B4A] dark:group-hover:text-[#3D9E7A] transition-colors">
-                            <ImagePlus className="w-7 h-7" />
-                            <span className="text-[11px] font-medium">Click to upload</span>
+
+            {/* Existing images */}
+            {images.length > 0 && (
+                <div className="p-4 grid grid-cols-3 gap-2 border-b border-[#E8E1D0] dark:border-[#1C2822]">
+                    {images.map((url, i) => (
+                        <div key={i} className="relative group aspect-video rounded-lg overflow-hidden bg-[#F2EDE0] dark:bg-[#1C2822]">
+                            <img src={url} alt={`Slide ${i + 1}`} className="w-full h-full object-cover" />
+                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+                                <button
+                                    onClick={() => removeImage(i)}
+                                    className="opacity-0 group-hover:opacity-100 transition-opacity w-7 h-7 rounded-full bg-red-500 text-white flex items-center justify-center hover:bg-red-600"
+                                >
+                                    <X className="w-3.5 h-3.5" />
+                                </button>
+                            </div>
+                            <span className="absolute bottom-1 left-1.5 text-[9px] font-bold text-white/70">{i + 1}</span>
                         </div>
-                    )}
-                    <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
+                    ))}
                 </div>
-                <div className="flex-1 flex flex-col gap-3">
-                    {errors.hero_image && <p className="text-red-500 text-xs">{errors.hero_image}</p>}
-                    <form onSubmit={handleSubmit} className="flex flex-wrap gap-2">
-                        <button type="submit" disabled={!data.hero_image || processing}
-                            className="px-5 py-2 rounded-lg bg-[#1F5B4A] dark:bg-[#3D9E7A] text-white text-xs font-semibold tracking-wide hover:bg-[#2D7A65] dark:hover:bg-[#52B892] transition-colors disabled:opacity-40">
-                            {processing ? 'Saving…' : 'Save'}
-                        </button>
-                        {preview && current && (
-                            <button type="button" onClick={handleRemove}
-                                className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold border border-[#D7CFBE] dark:border-[#2A3530] text-[#6A746F] dark:text-[#4A5A55] hover:border-red-300 dark:hover:border-red-700 hover:text-red-500 transition-colors">
-                                <X className="w-3.5 h-3.5" /> Remove
-                            </button>
-                        )}
-                    </form>
-                    <p className="text-[11px] text-[#6A746F] dark:text-[#4A5A55]">Recommended: 1200×800px or wider.</p>
+            )}
+
+            {/* Upload */}
+            <form onSubmit={handleSubmit} className="p-5 space-y-3">
+                <div
+                    onClick={() => inputRef.current?.click()}
+                    className="border-2 border-dashed border-[#D7CFBE] dark:border-[#2A3530] rounded-lg p-5 text-center cursor-pointer hover:border-[#1F5B4A] dark:hover:border-[#3D9E7A] transition-colors"
+                >
+                    <ImagePlus className="w-6 h-6 mx-auto mb-1.5 text-[#B8B2A8] dark:text-[#3A4A45]" />
+                    <p className="text-xs text-[#6A746F] dark:text-[#4A5A55]">
+                        {data.images.length > 0 ? `${data.images.length} file${data.images.length !== 1 ? 's' : ''} ready` : 'Click to add images'}
+                    </p>
+                    <input ref={inputRef} type="file" accept="image/*" multiple className="hidden"
+                        onChange={e => { handleFiles(e.target.files); e.target.value = ''; }} />
                 </div>
-            </div>
+                <button type="submit" disabled={!data.images.length || processing}
+                    className="w-full py-2 rounded-lg bg-[#1F5B4A] dark:bg-[#3D9E7A] text-white text-xs font-semibold hover:bg-[#2D7A65] dark:hover:bg-[#52B892] transition-colors disabled:opacity-40">
+                    {processing ? 'Uploading…' : 'Upload & Add to Slideshow'}
+                </button>
+            </form>
         </div>
     );
 }

@@ -44,9 +44,11 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'verified'])->group(
     Route::get('/financials', [AdminOrderController::class, 'financials'])->name('financials');
 
     // Site settings
-    Route::post('/settings/hero-image', [SettingsController::class, 'updateHeroImage'])->name('settings.hero-image');
-    Route::delete('/settings/hero-image', [SettingsController::class, 'removeHeroImage'])->name('settings.hero-image.remove');
+    Route::post('/settings/hero-images', [SettingsController::class, 'addHeroImages'])->name('settings.hero-images.add');
+    Route::delete('/settings/hero-images', [SettingsController::class, 'removeHeroImage'])->name('settings.hero-images.remove');
     Route::post('/settings/hero-content', [SettingsController::class, 'updateHeroContent'])->name('settings.hero-content');
+    // Legacy
+    Route::post('/settings/hero-image', [SettingsController::class, 'updateHeroImage'])->name('settings.hero-image');
 
     // Media library
     Route::get('/media', [MediaController::class, 'index'])->name('media.index');

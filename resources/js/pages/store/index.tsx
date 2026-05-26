@@ -471,27 +471,21 @@ function Header({ lang, setLang, dark, setDark, route, navigate, cartCount, open
 }
 
 // ---- PRODUCT CARD ----
-function ProductCard({ product, lang, onAdd, onNavigate }: {
+function ProductCard({ product, lang, onNavigate }: {
     product: Product;
     lang: Lang;
-    onAdd: (p: Product) => void;
     onNavigate: (p: Product) => void;
 }) {
     const t = COPY[lang];
     const price = Number(product.price);
     const salePrice = product.sale_price ? Number(product.sale_price) : null;
     const inStock = product.stock_status === 'in_stock';
-    const hasVariants = (product.variants?.length ?? 0) > 0;
-    const needsPDP = hasVariants || product.allows_engraving;
-    const quickLabel = needsPDP
-        ? (lang === 'en' ? 'View options' : 'عرض الخيارات')
-        : (lang === 'en' ? 'Add to cart' : 'أضف إلى السلّة');
+    const quickLabel = lang === 'en' ? 'View product' : 'عرض المنتج';
     const oosLabel = lang === 'en' ? 'Out of stock' : 'نفذت الكمّية';
 
     function handleMediaClick() {
         if (!inStock) return;
-        if (needsPDP) onNavigate(product);
-        else onAdd(product);
+        onNavigate(product);
     }
 
     return (
@@ -1151,7 +1145,7 @@ function HomePage({ lang, navigate, products, addToCart, heroImage, heroContent 
                     </div>
                     <div className="col-grid" style={{ paddingBottom: 0 }}>
                         {featured.map(p => (
-                            <ProductCard key={p.id} product={p} lang={lang} onAdd={prod => addToCart(prod.id)} onNavigate={prod => navigate('product', prod.id)} />
+                            <ProductCard key={p.id} product={p} lang={lang} onNavigate={prod => navigate('product', prod.id)} />
                         ))}
                     </div>
                 </div>
@@ -1363,7 +1357,7 @@ function CollectionPage({ lang, products, navigate, addToCart, initialCat }: {
                     <div className="col-grid">
                         {filtered.length > 0
                             ? paginated.map(p => (
-                                <ProductCard key={p.id} product={p} lang={lang} onAdd={prod => addToCart(prod.id)} onNavigate={prod => navigate('product', prod.id)} />
+                                <ProductCard key={p.id} product={p} lang={lang} onNavigate={prod => navigate('product', prod.id)} />
                             ))
                             : (
                                 <div style={{ gridColumn: '1/-1', padding: '48px 0', textAlign: 'center', color: 'var(--ink-mute)', fontSize: 15 }}>
@@ -1780,7 +1774,7 @@ function ProductPage({ lang, productId, navigate, products, addToCart }: {
                         </div>
                         <div className="col-grid" style={{ paddingBottom: 0 }}>
                             {related.map(rp => (
-                                <ProductCard key={rp.id} product={rp} lang={lang} onAdd={prod => addToCart(prod.id)} onNavigate={prod => navigate('product', prod.id)} />
+                                <ProductCard key={rp.id} product={rp} lang={lang} onNavigate={prod => navigate('product', prod.id)} />
                             ))}
                         </div>
                     </div>

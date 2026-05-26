@@ -25,16 +25,15 @@ class HandleInertiaRequests extends Middleware
                 'user' => $user,
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
-            'unread_count' => $user ? fn () => $user->unreadNotifications()->count() : 0,
-            'notifications' => \Inertia\Inertia::defer(fn () => $user
+            'unread_count' => fn () => $user ? $user->unreadNotifications()->count() : 0,
+            'notifications' => fn () => $user
                 ? $user->notifications()->latest()->limit(20)->get()->map(fn ($n) => [
                     'id'         => $n->id,
                     'data'       => $n->data,
                     'read_at'    => $n->read_at?->toISOString(),
                     'created_at' => $n->created_at->toISOString(),
                 ])
-                : []
-            ),
+                : [],
         ];
     }
 }

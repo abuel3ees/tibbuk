@@ -50,6 +50,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'verified'])->group(
     // Media library
     Route::get('/media', [MediaController::class, 'index'])->name('media.index');
     Route::post('/media', [MediaController::class, 'store'])->name('media.store');
+    Route::post('/media/sync', [MediaController::class, 'sync'])->name('media.sync');
     Route::delete('/media/{medium}', [MediaController::class, 'destroy'])->name('media.destroy');
     Route::post('/media/{medium}/assign', [MediaController::class, 'assign'])->name('media.assign');
 

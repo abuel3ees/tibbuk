@@ -54,7 +54,7 @@ class ProductController extends Controller
     public function create(): Response
     {
         $categories = Product::distinct()->orderBy('category')->pluck('category')->filter()->values();
-        $media = Media::orderByDesc('created_at')->get(['id', 'path', 'filename', 'url']);
+        $media = Media::orderByDesc('created_at')->get(['id', 'path', 'filename']);
         return Inertia::render('admin/products/form', ['product' => null, 'categories' => $categories, 'media' => $media]);
     }
 
@@ -84,7 +84,7 @@ class ProductController extends Controller
     public function edit(Product $product): Response
     {
         $categories = Product::distinct()->orderBy('category')->pluck('category')->filter()->values();
-        $media = Media::orderByDesc('created_at')->get(['id', 'path', 'filename', 'url']);
+        $media = Media::orderByDesc('created_at')->get(['id', 'path', 'filename']);
         return Inertia::render('admin/products/form', ['product' => $product, 'categories' => $categories, 'media' => $media]);
     }
 

@@ -18,7 +18,7 @@ interface Notification {
 function NotificationBell() {
     const { unread_count, notifications } = usePage().props as unknown as {
         unread_count: number;
-        notifications?: Notification[];
+        notifications: Notification[];
     };
     const [open, setOpen] = useState(false);
     const ref = useRef<HTMLDivElement>(null);
@@ -51,9 +51,7 @@ function NotificationBell() {
             </button>
             {open && (
                 <div className="absolute left-0 right-0 mt-2 mx-3 z-50 bg-[#FBF8F2] dark:bg-[#0E1512] border border-[#D7CFBE] dark:border-[#1C2822] rounded-lg shadow-lg overflow-hidden">
-                    {!notifications ? (
-                        <p className="px-4 py-3 text-xs text-[#6A746F] dark:text-[#4A5A55]">Loading…</p>
-                    ) : notifications.length === 0 ? (
+                    {notifications.length === 0 ? (
                         <p className="px-4 py-3 text-xs text-[#6A746F] dark:text-[#4A5A55]">No notifications</p>
                     ) : (
                         <ul className="max-h-80 overflow-y-auto divide-y divide-[#D7CFBE] dark:divide-[#1C2822]">

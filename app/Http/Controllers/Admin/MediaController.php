@@ -14,6 +14,7 @@ use Spatie\QueryBuilder\AllowedFilter;
 use Spatie\QueryBuilder\AllowedSort;
 use Spatie\QueryBuilder\QueryBuilder;
 
+
 class MediaController extends Controller
 {
     public function index(Request $request): Response
@@ -64,6 +65,30 @@ class MediaController extends Controller
         $medium->delete();
 
         return redirect()->route('admin.media.index')->with('success', 'Image deleted.');
+    }
+
+    public function sync(): RedirectResponse
+    {
+        $disk = Storage::disk('spaces');
+        $existing = Media::pluck('path')->flip();
+        $added = 0;
+
+        foreach ($disk->allFiles() as $path) {
+            $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+            if (!in_array($ext, ['jpg', 'jpeg', 'png', 'webp', 'gif', 'avif', 'svg'])) {
+                continue;
+            }
+            if ($existing->has($path)) continue;
+
+            $size = null;
+            try { $size = $disk->size($path); } catch (\Throwable) {}
+
+            Media::create(['path' => $path, 'filename' => basename($path), 'size' => $size]);
+            $added++;
+        }
+
+        return redirect()->route('admin.media.index')
+            ->with('success', "Sync complete — {$added} new image(s) imported from Spaces.");
     }
 
     public function assign(Request $request, Media $medium): RedirectResponse

@@ -1,6 +1,6 @@
 import { Head, router, useForm } from '@inertiajs/react';
 import { useState, useRef, useEffect } from 'react';
-import { Upload, Trash2, X, Link2, Check, Search, ChevronLeft, ChevronRight, Images } from 'lucide-react';
+import { Upload, Trash2, X, Link2, Check, Search, ChevronLeft, ChevronRight, Images, RefreshCw } from 'lucide-react';
 import AdminLayout from '@/layouts/admin-layout';
 
 interface MediaItem {
@@ -44,8 +44,15 @@ export default function MediaIndex({ media, products, filters }: Props) {
     const [selected, setSelected] = useState<MediaItem | null>(null);
     const [deleting, setDeleting] = useState<number | null>(null);
     const [copied, setCopied] = useState<number | null>(null);
+    const [syncing, setSyncing] = useState(false);
     const [search, setSearch] = useState(filters.search ?? '');
     const searchRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    function handleSync() {
+        if (!confirm('Scan DigitalOcean Spaces and import any images not yet in the library?')) return;
+        setSyncing(true);
+        router.post('/admin/media/sync', {}, { onFinish: () => setSyncing(false) });
+    }
 
     function applySearch(value: string) {
         setSearch(value);
@@ -87,12 +94,23 @@ export default function MediaIndex({ media, products, filters }: Props) {
                     <h1 className="text-3xl font-light text-[#16201D] dark:text-[#EAE6DE] tracking-tight">Media Library</h1>
                     <p className="text-sm text-[#6A746F] dark:text-[#4A5A55] mt-1">{media.total} image{media.total !== 1 ? 's' : ''}</p>
                 </div>
-                <button
-                    onClick={() => setUploadOpen(true)}
-                    className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#1F5B4A] dark:bg-[#3D9E7A] text-white text-xs font-semibold hover:bg-[#2D7A65] dark:hover:bg-[#52B892] transition-colors shadow-sm"
-                >
-                    <Upload className="w-3.5 h-3.5" /> Upload Images
-                </button>
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={handleSync}
+                        disabled={syncing}
+                        title="Scan Spaces and import any missing images"
+                        className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-[#D7CFBE] dark:border-[#2A3530] text-[#6A746F] dark:text-[#4A5A55] text-xs font-semibold hover:border-[#1F5B4A] dark:hover:border-[#3D9E7A] hover:text-[#1F5B4A] dark:hover:text-[#3D9E7A] transition-colors disabled:opacity-50"
+                    >
+                        <RefreshCw className={`w-3.5 h-3.5 ${syncing ? 'animate-spin' : ''}`} />
+                        {syncing ? 'Syncing…' : 'Sync from Spaces'}
+                    </button>
+                    <button
+                        onClick={() => setUploadOpen(true)}
+                        className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#1F5B4A] dark:bg-[#3D9E7A] text-white text-xs font-semibold hover:bg-[#2D7A65] dark:hover:bg-[#52B892] transition-colors shadow-sm"
+                    >
+                        <Upload className="w-3.5 h-3.5" /> Upload Images
+                    </button>
+                </div>
             </div>
 
             {/* Search */}
@@ -117,7 +135,10 @@ export default function MediaIndex({ media, products, filters }: Props) {
             {media.data.length === 0 ? (
                 <div className="text-center py-24">
                     <Images className="w-10 h-10 mx-auto mb-4 text-[#D7CFBE] dark:text-[#2A3530]" />
-                    <p className="text-sm text-[#6A746F] dark:text-[#4A5A55]">No images yet. Upload some to get started.</p>
+                    <p className="text-sm text-[#6A746F] dark:text-[#4A5A55]">No images yet.</p>
+                    <p className="text-xs text-[#B8B2A8] dark:text-[#3A4A45] mt-1.5">
+                        Upload new images, or click <strong>Sync from Spaces</strong> to import existing ones from your bucket.
+                    </p>
                 </div>
             ) : (
                 <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-3">

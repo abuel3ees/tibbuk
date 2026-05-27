@@ -1,31 +1,22 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
-import { ArrowLeft, Trash2, MapPin, Phone, Mail, Facebook, FileText, Package, Download, StickyNote, ExternalLink, Clipboard, ArrowRight } from 'lucide-react';
-import AdminLayout from '@/layouts/admin-layout';
+import { ArrowLeft, Trash2, MapPin, Phone, Mail, Facebook, FileText, Package, Download, ExternalLink, Clipboard, ArrowRight } from 'lucide-react';
+import LedgerLayout from '@/layouts/ledger-layout';
 
 interface OrderItem {
-    id: number;
-    product_name: string;
-    quantity: number;
-    unit_price: string;
-    cost_price: string | null;
-    engraving_text: string | null;
-    stitching_text: string | null;
-    selected_size: string | null;
-    selected_gender: string | null;
-    selected_color: string | null;
-    product: { id: number; name: string } | null;
+    id: number; product_name: string; quantity: number; unit_price: string; cost_price: string | null;
+    engraving_text: string | null; stitching_text: string | null; selected_size: string | null;
+    selected_gender: string | null; selected_color: string | null; product: { id: number; name: string } | null;
 }
 interface StatusLog { id: number; from_status: string | null; to_status: string; note: string | null; created_at: string }
-interface Order { id: number; customer_name: string; customer_phone: string; customer_email: string | null; customer_facebook: string | null; delivery_address: string; status: string; notes: string | null; admin_notes: string | null; total_amount: string; created_at: string; tracking_token: string; items: OrderItem[]; status_logs?: StatusLog[] }
+interface Order {
+    id: number; customer_name: string; customer_phone: string; customer_email: string | null;
+    customer_facebook: string | null; delivery_address: string; status: string; notes: string | null;
+    admin_notes: string | null; total_amount: string; created_at: string; tracking_token: string;
+    items: OrderItem[]; status_logs?: StatusLog[];
+}
 interface Props { order: Order }
 
-const STATUS_STYLES: Record<string, string> = {
-    pending:    'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
-    processing: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
-    delivered:  'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
-    cancelled:  'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400',
-};
 const statuses = ['pending', 'processing', 'delivered', 'cancelled'];
 
 function printReceipt(order: Order) {
@@ -84,10 +75,7 @@ function printReceipt(order: Order) {
   .totals-row.big { font-size: 18px; font-weight: 700; color: #111; margin-top: 8px; padding-top: 8px; border-top: 1px solid #eee; }
   .notes-block { margin-top: 24px; background: #fffbf0; border: 1px solid #fde68a; border-radius: 8px; padding: 14px 16px; }
   .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee; display: flex; justify-content: space-between; font-size: 11px; color: #aaa; }
-  @media print {
-    body { padding: 24px; }
-    @page { margin: 12mm; }
-  }
+  @media print { body { padding: 24px; } @page { margin: 12mm; } }
 </style>
 </head>
 <body>
@@ -99,7 +87,6 @@ function printReceipt(order: Order) {
       <div class="status">${order.status}</div>
     </div>
   </div>
-
   <div class="grid">
     <div class="block">
       <div class="section-title">Customer</div>
@@ -113,28 +100,17 @@ function printReceipt(order: Order) {
       <p style="margin-top:4px;">${order.delivery_address}</p>
     </div>
   </div>
-
   <div class="section-title">Order Items</div>
   <table>
-    <thead>
-      <tr>
-        <th>Product</th>
-        <th>Qty</th>
-        <th>Unit Price</th>
-        <th>Subtotal</th>
-      </tr>
-    </thead>
+    <thead><tr><th>Product</th><th>Qty</th><th>Unit Price</th><th>Subtotal</th></tr></thead>
     <tbody>${itemRows}</tbody>
   </table>
-
   <div class="totals">
     <div class="totals-row"><span>Subtotal</span><span style="font-family:monospace;">${subtotal.toFixed(2)} JOD</span></div>
     <div class="totals-row"><span>Shipping</span><span style="font-family:monospace;">${shipping.toFixed(2)} JOD</span></div>
     <div class="totals-row big"><span>Total</span><span style="font-family:monospace;">${total.toFixed(2)} JOD</span></div>
   </div>
-
   ${order.notes ? `<div class="notes-block"><div class="section-title" style="margin-bottom:6px;">Order Notes</div><p>${order.notes}</p></div>` : ''}
-
   <div class="footer">
     <span>Tibbuk — Medical equipment for Jordan's medical students</span>
     <span>Generated ${new Date().toLocaleDateString('en-JO')}</span>
@@ -180,213 +156,211 @@ export default function OrderShow({ order }: Props) {
 
     const totalRevenue = order.items.reduce((s, i) => s + Number(i.unit_price) * i.quantity, 0);
     const totalCost = order.items.reduce((s, i) => s + (i.cost_price ? Number(i.cost_price) * i.quantity : 0), 0);
+    const orderNo = String(order.id).padStart(5, '0');
+
+    const actions = (
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+            <select
+                value={order.status}
+                onChange={e => updateStatus(e.target.value)}
+                disabled={updating}
+                className={`tbl tag ${order.status}`}
+                style={{ background: 'transparent', border: '.5px solid var(--rule)', cursor: 'pointer', fontFamily: 'var(--font-mono)', fontSize: '9.5px', letterSpacing: '.12em', textTransform: 'uppercase', padding: '6px 10px', borderRadius: 2, outline: 'none', opacity: updating ? .5 : 1 }}
+            >
+                {statuses.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+            <a href={`/track/${order.tracking_token}`} target="_blank" rel="noopener noreferrer" className="btn btn-ghost" style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <ExternalLink size={12} /> Track
+            </a>
+            <button onClick={copyTrackingLink} className="btn btn-ghost" style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <Clipboard size={12} /> {copied ? 'Copied!' : 'Copy link'}
+            </button>
+            <button onClick={() => printReceipt(order)} className="btn btn-ghost" style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <Download size={12} /> Export PDF
+            </button>
+            <button onClick={deleteOrder} className="btn" style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'rgb(185,28,28)', borderColor: 'rgb(185,28,28)' }}>
+                <Trash2 size={12} /> Delete
+            </button>
+        </div>
+    );
 
     return (
-        <AdminLayout>
-            <Head title={`Order #${String(order.id).padStart(5, '0')} — Admin`} />
+        <LedgerLayout
+            active="orders"
+            title={<>Order <em>#{orderNo}</em></>}
+            eyebrow={new Date(order.created_at).toLocaleString('en-JO', { dateStyle: 'long', timeStyle: 'short' })}
+            actions={actions}
+        >
+            <Head title={`Order #${orderNo} — Admin`} />
 
-            {/* Header */}
-            <div className="mb-8">
-                <Link href="/admin/orders" className="inline-flex items-center gap-2 text-xs text-[#6A746F] dark:text-[#4A5A55] hover:text-[#16201D] dark:hover:text-[#EAE6DE] transition-colors mb-5 font-medium">
-                    <ArrowLeft className="w-3.5 h-3.5" /> Back to Orders
-                </Link>
-                <div className="flex items-start justify-between gap-4">
-                    <div>
-                        <p className="text-xs tracking-widest uppercase text-[#6A746F] dark:text-[#4A5A55] mb-1">Order</p>
-                        <h1 className="text-3xl font-light text-[#16201D] dark:text-[#EAE6DE] tracking-tight font-mono">#{String(order.id).padStart(5, '0')}</h1>
-                        <p className="text-sm text-[#6A746F] dark:text-[#4A5A55] mt-1">{new Date(order.created_at).toLocaleString('en-JO', { dateStyle: 'long', timeStyle: 'short' })}</p>
-                    </div>
-                    <div className="flex items-center gap-2.5">
-                        <select value={order.status} onChange={e => updateStatus(e.target.value)} disabled={updating}
-                            className={`text-[10px] tracking-wider uppercase px-3.5 py-2.5 rounded-lg font-semibold cursor-pointer focus:outline-none border-0 transition-all disabled:opacity-50 ${STATUS_STYLES[order.status] ?? ''}`}>
-                            {statuses.map(s => <option key={s} value={s}>{s}</option>)}
-                        </select>
-                        <a href={`/track/${order.tracking_token}`} target="_blank" rel="noopener noreferrer"
-                            className="flex items-center gap-2 px-3.5 py-2.5 rounded-lg text-xs font-semibold border border-[#E8E1D0] dark:border-[#1C2822] text-[#6A746F] dark:text-[#9AA8A3] hover:text-[#1F5B4A] dark:hover:text-[#3D9E7A] hover:border-[#1F5B4A] dark:hover:border-[#3D9E7A] transition-all">
-                            <ExternalLink className="w-3.5 h-3.5" /> Tracking Link
-                        </a>
-                        <button onClick={copyTrackingLink}
-                            className="flex items-center gap-2 px-3.5 py-2.5 rounded-lg text-xs font-semibold border border-[#E8E1D0] dark:border-[#1C2822] text-[#6A746F] dark:text-[#9AA8A3] hover:text-[#1F5B4A] dark:hover:text-[#3D9E7A] hover:border-[#1F5B4A] dark:hover:border-[#3D9E7A] transition-all">
-                            <Clipboard className="w-3.5 h-3.5" /> {copied ? 'Copied!' : 'Copy link'}
-                        </button>
-                        <button onClick={() => printReceipt(order)}
-                            className="flex items-center gap-2 px-3.5 py-2.5 rounded-lg text-xs font-semibold border border-[#E8E1D0] dark:border-[#1C2822] text-[#16201D] dark:text-[#EAE6DE] hover:bg-[#F2EDE0] dark:hover:bg-[#141C19] transition-all">
-                            <Download className="w-3.5 h-3.5" /> Export PDF
-                        </button>
-                        <button onClick={deleteOrder}
-                            className="flex items-center gap-2 px-3.5 py-2.5 rounded-lg text-xs font-semibold border border-red-200 dark:border-red-800/50 text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 hover:border-red-400 dark:hover:border-red-600 transition-all">
-                            <Trash2 className="w-3.5 h-3.5" /> Delete
-                        </button>
-                    </div>
-                </div>
-            </div>
+            <Link href="/admin/orders" className="back-link">
+                <ArrowLeft size={12} /> Back to Orders
+            </Link>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-                {/* Customer card */}
-                <div className="rounded-xl bg-white dark:bg-[#0E1512] border border-[#E8E1D0] dark:border-[#1C2822] p-6 shadow-sm">
-                    <h2 className="text-[11px] tracking-widest uppercase text-[#6A746F] dark:text-[#4A5A55] font-semibold mb-4">Customer</h2>
-
-                    <p className="font-semibold text-[#16201D] dark:text-[#EAE6DE] text-base">{order.customer_name}</p>
-
-                    <div className="mt-4 space-y-2.5">
-                        <div className="flex items-center gap-2.5 text-sm text-[#6A746F] dark:text-[#4A5A55]">
-                            <Phone className="w-3.5 h-3.5 shrink-0 text-[#B8B2A8] dark:text-[#3A4A45]" />
+            <div className="grid">
+                {/* ── Customer card ── */}
+                <div className="w c-4">
+                    <div className="w-head"><span className="w-eyebrow">Customer</span></div>
+                    <div className="nm" style={{ fontSize: 20, marginBottom: 16 }}>{order.customer_name}</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: 'var(--ink-soft)' }}>
+                            <Phone size={13} style={{ color: 'var(--ink-mute)', flexShrink: 0 }} />
                             <span>{order.customer_phone}</span>
                         </div>
                         {order.customer_email && (
-                            <div className="flex items-center gap-2.5 text-sm text-[#6A746F] dark:text-[#4A5A55]">
-                                <Mail className="w-3.5 h-3.5 shrink-0 text-[#B8B2A8] dark:text-[#3A4A45]" />
-                                <span className="truncate">{order.customer_email}</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: 'var(--ink-soft)' }}>
+                                <Mail size={13} style={{ color: 'var(--ink-mute)', flexShrink: 0 }} />
+                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{order.customer_email}</span>
                             </div>
                         )}
                         {order.customer_facebook && (
-                            <div className="flex items-center gap-2.5 text-sm">
-                                <Facebook className="w-3.5 h-3.5 shrink-0 text-[#B8B2A8] dark:text-[#3A4A45]" />
-                                <a href={order.customer_facebook} target="_blank" rel="noopener noreferrer"
-                                    className="text-[#1F5B4A] dark:text-[#3D9E7A] hover:underline truncate">{order.customer_facebook}</a>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13 }}>
+                                <Facebook size={13} style={{ color: 'var(--ink-mute)', flexShrink: 0 }} />
+                                <a href={order.customer_facebook} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)', overflow: 'hidden', textOverflow: 'ellipsis' }}>{order.customer_facebook}</a>
                             </div>
                         )}
                     </div>
-
-                    <div className="mt-5 pt-5 border-t border-[#F2EDE0] dark:border-[#1C2822]">
-                        <div className="flex items-start gap-2.5">
-                            <MapPin className="w-3.5 h-3.5 shrink-0 text-[#B8B2A8] dark:text-[#3A4A45] mt-0.5" />
-                            <p className="text-sm text-[#6A746F] dark:text-[#4A5A55] leading-relaxed">{order.delivery_address}</p>
+                    <div style={{ marginTop: 16, paddingTop: 16, borderTop: '.5px solid var(--hair)' }}>
+                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                            <MapPin size={13} style={{ color: 'var(--ink-mute)', flexShrink: 0, marginTop: 2 }} />
+                            <p style={{ fontSize: 13, color: 'var(--ink-soft)', lineHeight: 1.6 }}>{order.delivery_address}</p>
                         </div>
                     </div>
-
                     {order.notes && (
-                        <div className="mt-4 pt-4 border-t border-[#F2EDE0] dark:border-[#1C2822]">
-                            <div className="flex items-start gap-2.5">
-                                <FileText className="w-3.5 h-3.5 shrink-0 text-[#B8B2A8] dark:text-[#3A4A45] mt-0.5" />
-                                <p className="text-sm text-[#6A746F] dark:text-[#4A5A55] italic leading-relaxed">{order.notes}</p>
+                        <div style={{ marginTop: 14, paddingTop: 14, borderTop: '.5px solid var(--hair)' }}>
+                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                                <FileText size={13} style={{ color: 'var(--ink-mute)', flexShrink: 0, marginTop: 2 }} />
+                                <p style={{ fontSize: 13, color: 'var(--ink-soft)', fontStyle: 'italic', lineHeight: 1.6 }}>{order.notes}</p>
                             </div>
                         </div>
                     )}
                 </div>
 
-                {/* Items card */}
-                <div className="lg:col-span-2 rounded-xl bg-white dark:bg-[#0E1512] border border-[#E8E1D0] dark:border-[#1C2822] overflow-hidden shadow-sm">
-                    <div className="px-6 py-4 border-b border-[#F2EDE0] dark:border-[#1C2822]">
-                        <h2 className="text-[11px] tracking-widest uppercase text-[#6A746F] dark:text-[#4A5A55] font-semibold">
-                            Items <span className="ml-2 text-[#B8B2A8] dark:text-[#3A4A45]">{order.items.length}</span>
-                        </h2>
+                {/* ── Items card ── */}
+                <div className="w c-8" style={{ padding: 0, overflow: 'hidden' }}>
+                    <div style={{ padding: '20px var(--pad-card) 16px', borderBottom: '.5px solid var(--hair)' }}>
+                        <span className="w-eyebrow">Items · {order.items.length}</span>
                     </div>
-                    <table className="w-full text-sm">
-                        <thead>
-                            <tr className="border-b border-[#F8F5EE] dark:border-[#141C19]">
-                                <th className="text-left px-6 py-3 text-[10px] tracking-widest uppercase text-[#B8B2A8] dark:text-[#3A4A45] font-semibold">Product</th>
-                                <th className="text-center px-6 py-3 text-[10px] tracking-widest uppercase text-[#B8B2A8] dark:text-[#3A4A45] font-semibold">Qty</th>
-                                <th className="text-right px-6 py-3 text-[10px] tracking-widest uppercase text-[#B8B2A8] dark:text-[#3A4A45] font-semibold">Price</th>
-                                <th className="text-right px-6 py-3 text-[10px] tracking-widest uppercase text-[#B8B2A8] dark:text-[#3A4A45] font-semibold">Subtotal</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-[#F8F5EE] dark:divide-[#141C19]">
-                            {order.items.map(item => (
-                                <tr key={item.id}>
-                                    <td className="px-6 py-4">
-                                        <div className="flex items-center gap-2.5">
-                                            <div className="w-7 h-7 rounded-lg bg-[#F2EDE0] dark:bg-[#1C2822] flex items-center justify-center shrink-0">
-                                                <Package className="w-3.5 h-3.5 text-[#6A746F] dark:text-[#4A5A55]" />
-                                            </div>
-                                            <div>
-                                                <span className="font-semibold text-[#16201D] dark:text-[#EAE6DE]">{item.product_name}</span>
-                                                <div className="flex flex-wrap gap-x-3 mt-0.5">
-                                                    {item.selected_size   && <span className="text-[11px] text-[#6A746F] dark:text-[#4A5A55]">Size: {item.selected_size}</span>}
-                                                    {item.selected_gender && <span className="text-[11px] text-[#6A746F] dark:text-[#4A5A55]">{item.selected_gender === 'male' ? 'Male' : 'Female'}</span>}
-                                                    {item.selected_color  && <span className="text-[11px] text-[#6A746F] dark:text-[#4A5A55]">Color: {item.selected_color}</span>}
-                                                    {item.engraving_text  && <span className="text-[11px] text-[#6A746F] dark:text-[#4A5A55] italic">✎ {item.engraving_text}</span>}
-                                                    {item.stitching_text  && <span className="text-[11px] text-[#6A746F] dark:text-[#4A5A55] italic">✦ {item.stitching_text}</span>}
+                    <div style={{ overflowX: 'auto' }}>
+                        <table className="tbl">
+                            <thead>
+                                <tr>
+                                    <th>Product</th>
+                                    <th className="center">Qty</th>
+                                    <th style={{ textAlign: 'right' }}>Price</th>
+                                    <th>Subtotal</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {order.items.map(item => (
+                                    <tr key={item.id}>
+                                        <td>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                                <div style={{ width: 28, height: 28, borderRadius: 3, background: 'var(--bg-sunk)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                                    <Package size={13} style={{ color: 'var(--ink-mute)' }} />
+                                                </div>
+                                                <div>
+                                                    <span className="nm" style={{ fontSize: 15 }}>{item.product_name}</span>
+                                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0 12px', marginTop: 2 }}>
+                                                        {item.selected_size   && <span style={{ fontSize: 11, color: 'var(--ink-mute)' }}>Size: {item.selected_size}</span>}
+                                                        {item.selected_gender && <span style={{ fontSize: 11, color: 'var(--ink-mute)' }}>{item.selected_gender === 'male' ? 'Male' : 'Female'}</span>}
+                                                        {item.selected_color  && <span style={{ fontSize: 11, color: 'var(--ink-mute)' }}>Color: {item.selected_color}</span>}
+                                                        {item.engraving_text  && <span style={{ fontSize: 11, color: 'var(--ink-mute)', fontStyle: 'italic' }}>✎ {item.engraving_text}</span>}
+                                                        {item.stitching_text  && <span style={{ fontSize: 11, color: 'var(--ink-mute)', fontStyle: 'italic' }}>✦ {item.stitching_text}</span>}
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4 text-center text-[#6A746F] dark:text-[#4A5A55] font-mono">{item.quantity}</td>
-                                    <td className="px-6 py-4 text-right text-[#6A746F] dark:text-[#4A5A55] font-mono tabular-nums">{Number(item.unit_price).toFixed(2)}</td>
-                                    <td className="px-6 py-4 text-right font-semibold text-[#16201D] dark:text-[#EAE6DE] font-mono tabular-nums">
-                                        {(Number(item.unit_price) * item.quantity).toFixed(2)} <span className="text-[10px] font-normal text-[#6A746F] dark:text-[#4A5A55]">JOD</span>
+                                        </td>
+                                        <td className="center"><span className="num">{item.quantity}</span></td>
+                                        <td><span className="num" style={{ display: 'block', textAlign: 'right' }}>{Number(item.unit_price).toFixed(2)}</span></td>
+                                        <td>
+                                            <span className="num">{(Number(item.unit_price) * item.quantity).toFixed(2)}</span>
+                                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--ink-mute)', marginLeft: 4 }}>JOD</span>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                            <tfoot>
+                                <tr style={{ borderTop: '.5px solid var(--rule)' }}>
+                                    <td colSpan={3} style={{ textAlign: 'right', fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--ink-mute)' }}>Total</td>
+                                    <td>
+                                        <span style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 400, letterSpacing: '-.02em' }}>{Number(order.total_amount).toFixed(2)}</span>
+                                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--ink-mute)', marginLeft: 4 }}>JOD</span>
                                     </td>
                                 </tr>
-                            ))}
-                        </tbody>
-                        <tfoot>
-                            <tr className="border-t border-[#E8E1D0] dark:border-[#1C2822]">
-                                <td colSpan={3} className="px-6 py-4 text-right text-sm font-semibold text-[#6A746F] dark:text-[#4A5A55]">Total</td>
-                                <td className="px-6 py-4 text-right text-2xl font-light text-[#16201D] dark:text-[#EAE6DE] font-mono tabular-nums">
-                                    {Number(order.total_amount).toFixed(2)} <span className="text-sm text-[#6A746F] dark:text-[#4A5A55]">JOD</span>
-                                </td>
-                            </tr>
-                        </tfoot>
-                    </table>
-
+                            </tfoot>
+                        </table>
+                    </div>
                     {order.status === 'delivered' && totalCost > 0 && (
-                        <div className="px-6 py-5 border-t border-[#E8E1D0] dark:border-[#1C2822] bg-[#F8F5EE] dark:bg-[#141C19] grid grid-cols-3 gap-4">
+                        <div style={{ padding: '16px var(--pad-card)', borderTop: '.5px solid var(--hair)', background: 'var(--bg-sunk)', display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 16 }}>
                             {[
-                                { label: 'Revenue', value: totalRevenue, cls: 'text-[#16201D] dark:text-[#EAE6DE]' },
-                                { label: 'Cost', value: totalCost, cls: 'text-[#6A746F] dark:text-[#4A5A55]' },
-                                { label: 'Profit', value: totalRevenue - totalCost, cls: totalRevenue - totalCost >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-600 dark:text-red-400' },
-                            ].map(({ label, value, cls }) => (
+                                { label: 'Revenue', value: totalRevenue, color: 'var(--ink)' },
+                                { label: 'Cost', value: totalCost, color: 'var(--ink-mute)' },
+                                { label: 'Profit', value: totalRevenue - totalCost, color: totalRevenue - totalCost >= 0 ? 'var(--accent)' : 'rgb(185,28,28)' },
+                            ].map(({ label, value, color }) => (
                                 <div key={label}>
-                                    <p className="text-[10px] tracking-widest uppercase text-[#6A746F] dark:text-[#4A5A55] mb-1 font-semibold">{label}</p>
-                                    <p className={`text-sm font-semibold font-mono tabular-nums ${cls}`}>{value.toFixed(2)} <span className="text-[10px] font-normal opacity-60">JOD</span></p>
+                                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9.5, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--ink-mute)', marginBottom: 4 }}>{label}</div>
+                                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 13, fontVariantNumeric: 'tabular-nums', color }}>{value.toFixed(2)} JOD</div>
                                 </div>
                             ))}
                         </div>
                     )}
                 </div>
-            </div>
-            {/* Admin notes */}
-            <div className="mt-5 rounded-xl bg-white dark:bg-[#0E1512] border border-[#E8E1D0] dark:border-[#1C2822] p-6 shadow-sm">
-                <h2 className="text-[11px] tracking-widest uppercase text-[#6A746F] dark:text-[#4A5A55] font-semibold mb-4 flex items-center gap-2">
-                    <StickyNote className="w-3.5 h-3.5" /> Admin Notes
-                </h2>
-                <form onSubmit={saveNotes} className="space-y-3">
-                    <textarea
-                        value={notesForm.data.admin_notes}
-                        onChange={e => notesForm.setData('admin_notes', e.target.value)}
-                        rows={3}
-                        placeholder="Internal notes — not visible to customer…"
-                        className="w-full rounded-lg border border-[#D7CFBE] dark:border-[#2A3530] bg-[#F8F5EE] dark:bg-[#141C19] px-4 py-3 text-sm text-[#16201D] dark:text-[#EAE6DE] placeholder-[#B8B2A8] dark:placeholder-[#3A4A45] focus:outline-none focus:border-[#1F5B4A] dark:focus:border-[#3D9E7A] transition-colors resize-none"
-                    />
-                    <button type="submit" disabled={notesForm.processing}
-                        className="px-5 py-2 rounded-lg bg-[#1F5B4A] dark:bg-[#3D9E7A] text-white text-xs font-semibold hover:bg-[#2D7A65] dark:hover:bg-[#52B892] transition-colors disabled:opacity-40">
-                        {notesForm.processing ? 'Saving…' : 'Save Notes'}
-                    </button>
-                </form>
-            </div>
-            {/* Status Timeline */}
-            {order.status_logs && order.status_logs.length > 0 && (
-                <div className="mt-5 rounded-xl bg-white dark:bg-[#0E1512] border border-[#E8E1D0] dark:border-[#1C2822] p-6 shadow-sm">
-                    <h2 className="text-[11px] tracking-widest uppercase text-[#6A746F] dark:text-[#4A5A55] font-semibold mb-4">Status Timeline</h2>
-                    <div className="space-y-3">
-                        {order.status_logs.map((log, i) => (
-                            <div key={log.id} className="flex items-start gap-3">
-                                <div className="flex flex-col items-center">
-                                    <div className="w-2.5 h-2.5 rounded-full bg-[#1F5B4A] dark:bg-[#3D9E7A] mt-1 shrink-0" />
-                                    {i < order.status_logs!.length - 1 && <div className="w-px flex-1 bg-[#E8E1D0] dark:bg-[#1C2822] mt-1 min-h-[20px]" />}
-                                </div>
-                                <div className="pb-3">
-                                    <div className="flex items-center gap-2 text-xs">
-                                        {log.from_status ? (
-                                            <>
-                                                <span className="text-[#6A746F] dark:text-[#4A5A55] capitalize">{log.from_status}</span>
-                                                <ArrowRight className="w-3 h-3 text-[#B8B2A8] dark:text-[#3A4A45]" />
-                                                <span className="font-semibold text-[#16201D] dark:text-[#EAE6DE] capitalize">{log.to_status}</span>
-                                            </>
-                                        ) : (
-                                            <span className="font-semibold text-[#16201D] dark:text-[#EAE6DE] capitalize">Created as {log.to_status}</span>
-                                        )}
-                                    </div>
-                                    <p className="text-[11px] text-[#B8B2A8] dark:text-[#3A4A45] mt-0.5">
-                                        {new Date(log.created_at).toLocaleString('en-JO', { dateStyle: 'medium', timeStyle: 'short' })}
-                                    </p>
-                                    {log.note && <p className="text-xs text-[#6A746F] dark:text-[#4A5A55] mt-0.5 italic">{log.note}</p>}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
+
+                {/* ── Admin Notes ── */}
+                <div className="w c-12">
+                    <div className="w-head"><span className="w-eyebrow">Admin Notes</span></div>
+                    <form onSubmit={saveNotes} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                        <textarea
+                            value={notesForm.data.admin_notes}
+                            onChange={e => notesForm.setData('admin_notes', e.target.value)}
+                            rows={3}
+                            placeholder="Internal notes — not visible to customer…"
+                            className="form-inp"
+                            style={{ resize: 'none' }}
+                        />
+                        <div>
+                            <button type="submit" disabled={notesForm.processing} className="btn">
+                                {notesForm.processing ? 'Saving…' : 'Save Notes'}
+                            </button>
+                        </div>
+                    </form>
                 </div>
-            )}
-        </AdminLayout>
+
+                {/* ── Status Timeline ── */}
+                {order.status_logs && order.status_logs.length > 0 && (
+                    <div className="w c-12">
+                        <div className="w-head"><span className="w-eyebrow">Status Timeline</span></div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                            {order.status_logs.map((log, i) => (
+                                <div key={log.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, paddingBottom: 16 }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                        <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--accent)', marginTop: 4, flexShrink: 0 }} />
+                                        {i < order.status_logs!.length - 1 && <div style={{ width: 1, flex: 1, background: 'var(--hair)', marginTop: 4, minHeight: 20 }} />}
+                                    </div>
+                                    <div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontFamily: 'var(--font-mono)', fontSize: 11 }}>
+                                            {log.from_status ? (
+                                                <>
+                                                    <span style={{ color: 'var(--ink-mute)', textTransform: 'capitalize' }}>{log.from_status}</span>
+                                                    <ArrowRight size={10} style={{ color: 'var(--ink-mute)' }} />
+                                                    <span style={{ color: 'var(--ink)', textTransform: 'capitalize', fontWeight: 500 }}>{log.to_status}</span>
+                                                </>
+                                            ) : (
+                                                <span style={{ color: 'var(--ink)', textTransform: 'capitalize', fontWeight: 500 }}>Created as {log.to_status}</span>
+                                            )}
+                                        </div>
+                                        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--ink-mute)', marginTop: 2 }}>
+                                            {new Date(log.created_at).toLocaleString('en-JO', { dateStyle: 'medium', timeStyle: 'short' })}
+                                        </div>
+                                        {log.note && <div style={{ fontSize: 12, color: 'var(--ink-soft)', fontStyle: 'italic', marginTop: 2 }}>{log.note}</div>}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+            </div>
+        </LedgerLayout>
     );
 }

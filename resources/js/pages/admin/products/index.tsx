@@ -1,13 +1,11 @@
 import { Head, Link, router, useForm, Deferred } from '@inertiajs/react';
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { Plus, Pencil, Trash2, Search, X, Upload, Eye, EyeOff, Filter, Package, ImagePlus, Download, AlertTriangle, Copy } from 'lucide-react';
-import AdminLayout from '@/layouts/admin-layout';
+import { Plus, Pencil, Trash2, Search, X, Upload, Eye, EyeOff, Package, ImagePlus, Download, AlertTriangle, Copy } from 'lucide-react';
+import LedgerLayout from '@/layouts/ledger-layout';
 
 interface Product { id: number; name: string; sku: string | null; category: string | null; price: string; sale_price: string | null; stock_status: string; quantity: number | null; is_active: boolean; featured_image: string | null }
 interface PaginatedProducts { data: Product[]; current_page: number; last_page: number; total: number; links: { url: string | null; label: string; active: boolean }[] }
 interface Props { products: PaginatedProducts; categories: string[]; filters: { search?: string; category?: string; stock?: string }; all_products?: Product[]; velocity?: Record<number, number> }
-
-const inputCls = 'w-full border border-[#D7CFBE] dark:border-[#2A3530] bg-white dark:bg-[#141C19] text-[#16201D] dark:text-[#EAE6DE] text-sm focus:outline-none focus:border-[#1F5B4A] dark:focus:border-[#3D9E7A] transition-colors placeholder-[#B8B2A8] dark:placeholder-[#3A4A45]';
 
 interface UndoToast { id: number; name: string; timeoutId: ReturnType<typeof setTimeout> }
 
@@ -30,16 +28,9 @@ function StockCell({ product }: { product: Product }) {
 
     if (editing) {
         return (
-            <input
-                type="number"
-                min="0"
-                value={value}
-                onChange={e => setValue(e.target.value)}
-                onBlur={save}
-                onKeyDown={e => { if (e.key === 'Enter') save(); if (e.key === 'Escape') setEditing(false); }}
-                autoFocus
-                style={{ width: 60, padding: '2px 6px', fontSize: 12, border: '1px solid #1F5B4A', borderRadius: 6, background: 'white', color: '#16201D' }}
-            />
+            <input type="number" min="0" value={value} onChange={e => setValue(e.target.value)}
+                onBlur={save} onKeyDown={e => { if (e.key === 'Enter') save(); if (e.key === 'Escape') setEditing(false); }}
+                autoFocus className="tbl-input no-icon" style={{ width: 64, padding: '3px 8px', fontSize: 12 }} />
         );
     }
 
@@ -48,14 +39,13 @@ function StockCell({ product }: { product: Product }) {
 
     if (status === 'in_stock' && qty !== null && qty <= 5) {
         return (
-            <button onClick={() => setEditing(true)} className="inline-flex items-center gap-1.5 text-[10px] tracking-wider uppercase px-2.5 py-1 rounded-full font-semibold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 hover:opacity-80">
-                <AlertTriangle className="w-3 h-3" />
-                Low ({qty})
+            <button onClick={() => setEditing(true)} className="tbl tag low-stock" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, cursor: 'pointer', background: 'none', border: 'none' }}>
+                <AlertTriangle size={10} /> Low ({qty})
             </button>
         );
     }
     return (
-        <button onClick={() => setEditing(true)} className={`text-[10px] tracking-wider uppercase px-2.5 py-1 rounded-full font-semibold hover:opacity-80 ${status === 'in_stock' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'}`}>
+        <button onClick={() => setEditing(true)} className={`tbl tag ${status === 'in_stock' ? 'active' : 'out-stock'}`} style={{ cursor: 'pointer', background: 'none', border: 'none' }}>
             {status === 'in_stock' ? 'In Stock' : 'Out of Stock'}
         </button>
     );
@@ -122,211 +112,205 @@ export default function ProductsIndex({ products, categories, filters, all_produ
         router.post('/admin/products/bulk-visibility', { active });
     }
 
-    return (
-        <AdminLayout>
-            <Head title="Products — Admin" />
+    const actions = (
+        <Link href="/admin/products/create" className="btn" style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+            <Plus size={13} /> Add Product
+        </Link>
+    );
 
-            <div className="flex items-start justify-between mb-7 gap-4">
-                <div>
-                    <h1 className="text-3xl font-light text-[#16201D] dark:text-[#EAE6DE] tracking-tight">Products</h1>
-                    <p className="text-sm text-[#6A746F] dark:text-[#4A5A55] mt-1">{products.total} total products</p>
-                </div>
-                <div className="flex items-center gap-2.5 flex-wrap justify-end">
-                    <button onClick={() => handleBulkVisibility(true)}
-                        className="flex items-center gap-2 px-3.5 py-2.5 rounded-lg border border-[#D7CFBE] dark:border-[#2A3530] bg-white dark:bg-[#141C19] text-[#6A746F] dark:text-[#9AA8A3] text-xs font-semibold hover:border-emerald-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-all shadow-sm">
-                        <Eye className="w-3.5 h-3.5" /> All Active
-                    </button>
-                    <button onClick={() => handleBulkVisibility(false)}
-                        className="flex items-center gap-2 px-3.5 py-2.5 rounded-lg border border-[#D7CFBE] dark:border-[#2A3530] bg-white dark:bg-[#141C19] text-[#6A746F] dark:text-[#9AA8A3] text-xs font-semibold hover:border-red-300 hover:text-red-500 dark:hover:text-red-400 transition-all shadow-sm">
-                        <EyeOff className="w-3.5 h-3.5" /> All Hidden
-                    </button>
-                    <button onClick={() => setBulkImageOpen(true)}
-                        className="flex items-center gap-2 px-3.5 py-2.5 rounded-lg border border-[#D7CFBE] dark:border-[#2A3530] bg-white dark:bg-[#141C19] text-[#6A746F] dark:text-[#9AA8A3] text-xs font-semibold hover:border-[#1F5B4A] dark:hover:border-[#3D9E7A] hover:text-[#1F5B4A] dark:hover:text-[#3D9E7A] transition-all shadow-sm">
-                        <ImagePlus className="w-3.5 h-3.5" /> Bulk Images
-                    </button>
-                    <a href="/admin/products/export"
-                        className="flex items-center gap-2 px-3.5 py-2.5 rounded-lg border border-[#D7CFBE] dark:border-[#2A3530] bg-white dark:bg-[#141C19] text-[#6A746F] dark:text-[#9AA8A3] text-xs font-semibold hover:border-[#1F5B4A] dark:hover:border-[#3D9E7A] hover:text-[#1F5B4A] dark:hover:text-[#3D9E7A] transition-all shadow-sm">
-                        <Download className="w-3.5 h-3.5" /> Export CSV
-                    </a>
-                    <button onClick={() => setImportOpen(true)}
-                        className="flex items-center gap-2 px-3.5 py-2.5 rounded-lg border border-[#D7CFBE] dark:border-[#2A3530] bg-white dark:bg-[#141C19] text-[#6A746F] dark:text-[#9AA8A3] text-xs font-semibold hover:border-[#1F5B4A] dark:hover:border-[#3D9E7A] hover:text-[#1F5B4A] dark:hover:text-[#3D9E7A] transition-all shadow-sm">
-                        <Upload className="w-3.5 h-3.5" /> Import CSV
-                    </button>
-                    <Link href="/admin/products/create"
-                        className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#1F5B4A] dark:bg-[#3D9E7A] text-white text-xs font-semibold hover:bg-[#2D7A65] dark:hover:bg-[#52B892] transition-colors shadow-sm">
-                        <Plus className="w-3.5 h-3.5" /> Add Product
-                    </Link>
-                </div>
-            </div>
+    return (
+        <LedgerLayout
+            active="products"
+            title={<>The <em>Products</em></>}
+            eyebrow={`${products.total} total`}
+            actions={actions}
+            counts={{ products: products.total }}
+        >
+            <Head title="Products — Admin" />
 
             {importOpen && <ImportModal onClose={() => setImportOpen(false)} />}
             {bulkImageOpen && (
                 <Deferred data="all_products" fallback={
-                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-                        <p className="text-white text-sm">Loading products…</p>
+                    <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,.4)', backdropFilter: 'blur(4px)' }}>
+                        <p style={{ color: '#fff', fontFamily: 'var(--font-mono)', fontSize: 13 }}>Loading products…</p>
                     </div>
                 }>
                     <BulkImageModal all_products={all_products ?? []} onClose={() => setBulkImageOpen(false)} />
                 </Deferred>
             )}
 
-            {/* Undo toasts */}
+            {/* ── Undo toasts ── */}
             {undoToasts.length > 0 && (
-                <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2">
+                <div style={{ position: 'fixed', bottom: 20, left: '50%', transform: 'translateX(-50%)', zIndex: 50, display: 'flex', flexDirection: 'column', gap: 8 }}>
                     {undoToasts.map(t => (
-                        <div key={t.id} className="flex items-center gap-3 px-5 py-3 rounded-xl bg-[#16201D] dark:bg-[#EAE6DE] text-white dark:text-[#16201D] shadow-xl text-sm">
+                        <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 18px', borderRadius: 4, background: 'var(--ink)', color: 'var(--bg)', fontFamily: 'var(--font-text)', fontSize: 13, boxShadow: '0 8px 28px rgba(0,0,0,.3)' }}>
                             <span>Deleted &ldquo;{t.name.slice(0, 30)}{t.name.length > 30 ? '…' : ''}&rdquo;</span>
-                            <button onClick={() => handleUndo(t)} className="font-semibold underline text-[#3D9E7A] dark:text-[#1F5B4A] ml-2">Undo</button>
+                            <button onClick={() => handleUndo(t)} style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline', letterSpacing: '.08em' }}>UNDO</button>
                         </div>
                     ))}
                 </div>
             )}
 
-            {/* Filters */}
-            <div className="flex flex-wrap gap-2.5 mb-5">
-                <div className="relative flex-1 min-w-52">
-                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#B8B2A8] dark:text-[#3A4A45]" />
+            {/* ── Secondary toolbar ── */}
+            <div className="page-toolbar">
+                <button onClick={() => handleBulkVisibility(true)} className="btn btn-ghost" style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <Eye size={13} /> All Active
+                </button>
+                <button onClick={() => handleBulkVisibility(false)} className="btn btn-ghost" style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <EyeOff size={13} /> All Hidden
+                </button>
+                <button onClick={() => setBulkImageOpen(true)} className="btn btn-ghost" style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <ImagePlus size={13} /> Bulk Images
+                </button>
+                <a href="/admin/products/export" className="btn btn-ghost" style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <Download size={13} /> Export CSV
+                </a>
+                <button onClick={() => setImportOpen(true)} className="btn btn-ghost" style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <Upload size={13} /> Import CSV
+                </button>
+            </div>
+
+            {/* ── Filters ── */}
+            <div className="tbl-filters">
+                <div className="tbl-search">
+                    <Search className="search-ic" size={14} />
                     <input value={search} onChange={e => handleSearchChange(e.target.value)}
-                        placeholder="Search products…"
-                        className={`${inputCls} pl-10 pr-9 py-2.5 rounded-lg`} />
+                        placeholder="Search products…" className="tbl-input" />
                     {search && (
-                        <button onClick={() => handleSearchChange('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#B8B2A8] dark:text-[#3A4A45] hover:text-[#6A746F] dark:hover:text-[#9AA8A3]">
-                            <X className="w-4 h-4" />
+                        <button onClick={() => handleSearchChange('')} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ink-mute)', display: 'flex' }}>
+                            <X size={14} />
                         </button>
                     )}
                 </div>
-                <select value={category} onChange={e => { setCategory(e.target.value); applyFilters({ category: e.target.value }); }}
-                    className={`${inputCls} px-3 py-2.5 rounded-lg min-w-40`}>
+                <select value={category} onChange={e => { setCategory(e.target.value); applyFilters({ category: e.target.value }); }} className="tbl-select">
                     <option value="">All categories</option>
                     {categories.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
-                <select value={stock} onChange={e => { setStock(e.target.value); applyFilters({ stock: e.target.value }); }}
-                    className={`${inputCls} px-3 py-2.5 rounded-lg`}>
+                <select value={stock} onChange={e => { setStock(e.target.value); applyFilters({ stock: e.target.value }); }} className="tbl-select" style={{ minWidth: 120 }}>
                     <option value="">All stock</option>
                     <option value="in">In stock</option>
                     <option value="out">Out of stock</option>
                 </select>
                 {hasFilters && (
-                    <button onClick={() => { setSearch(''); setCategory(''); setStock(''); router.get('/admin/products', {}, { preserveState: true, replace: true }); }}
-                        className="flex items-center gap-2 px-3.5 py-2.5 rounded-lg text-sm text-[#6A746F] dark:text-[#4A5A55] border border-[#D7CFBE] dark:border-[#2A3530] bg-white dark:bg-[#141C19] hover:text-[#16201D] dark:hover:text-[#EAE6DE] hover:border-[#6A746F] dark:hover:border-[#4A5A55] transition-all">
-                        <Filter className="w-3.5 h-3.5" /> Clear
+                    <button onClick={() => { setSearch(''); setCategory(''); setStock(''); router.get('/admin/products', {}, { preserveState: true, replace: true }); }} className="tbl-chip">
+                        ✕ Clear
                     </button>
                 )}
             </div>
 
-            {/* Table card */}
-            <div className="rounded-xl bg-white dark:bg-[#0E1512] border border-[#E8E1D0] dark:border-[#1C2822] overflow-hidden shadow-sm">
-                <table className="w-full text-sm">
-                    <thead>
-                        <tr className="border-b border-[#F2EDE0] dark:border-[#1C2822]">
-                            <th className="text-left px-6 py-3.5 text-[11px] tracking-widest uppercase text-[#6A746F] dark:text-[#4A5A55] font-semibold">Product</th>
-                            <th className="text-left px-6 py-3.5 text-[11px] tracking-widest uppercase text-[#6A746F] dark:text-[#4A5A55] font-semibold hidden md:table-cell">Category</th>
-                            <th className="text-left px-6 py-3.5 text-[11px] tracking-widest uppercase text-[#6A746F] dark:text-[#4A5A55] font-semibold">Price</th>
-                            <th className="text-left px-6 py-3.5 text-[11px] tracking-widest uppercase text-[#6A746F] dark:text-[#4A5A55] font-semibold hidden sm:table-cell">Stock</th>
-                            <th className="text-left px-6 py-3.5 text-[11px] tracking-widest uppercase text-[#6A746F] dark:text-[#4A5A55] font-semibold hidden lg:table-cell">Status</th>
-                            <th className="px-6 py-3.5" />
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[#F8F5EE] dark:divide-[#141C19]">
-                        {products.data.filter(p => !hiddenIds.has(p.id)).map(product => (
-                            <tr key={product.id} className="hover:bg-[#F8F5EE] dark:hover:bg-[#141C19] transition-colors group">
-                                <td className="px-6 py-4">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-9 h-9 rounded-lg overflow-hidden bg-[#F2EDE0] dark:bg-[#1C2822] flex-shrink-0 flex items-center justify-center">
-                                            {product.featured_image
-                                                ? <img src={product.featured_image} alt="" className="w-full h-full object-cover" />
-                                                : <Package className="w-4 h-4 text-[#B8B2A8] dark:text-[#3A4A45]" />}
-                                        </div>
-                                        <div>
-                                            <p className="font-semibold text-[#16201D] dark:text-[#EAE6DE]">{product.name}</p>
-                                            {product.sku && <p className="text-[11px] text-[#6A746F] dark:text-[#4A5A55] mt-0.5 font-mono">{product.sku}</p>}
-                                            {velocity && velocity[product.id] > 0 && (
-                                                <p className="text-[11px] text-[#6A746F] dark:text-[#4A5A55] mt-0.5">{velocity[product.id]}/mo</p>
-                                            )}
-                                        </div>
-                                    </div>
-                                </td>
-                                <td className="px-6 py-4 text-[#6A746F] dark:text-[#4A5A55] hidden md:table-cell">{product.category ?? '—'}</td>
-                                <td className="px-6 py-4 font-mono tabular-nums">
-                                    {product.sale_price ? (
-                                        <div>
-                                            <span className="text-[#B8B2A8] dark:text-[#3A4A45] line-through text-xs">{Number(product.price).toFixed(2)}</span>
-                                            <span className="ml-1.5 font-semibold text-[#16201D] dark:text-[#EAE6DE]">{Number(product.sale_price).toFixed(2)} <span className="text-[10px] font-normal text-[#6A746F] dark:text-[#4A5A55]">JD</span></span>
-                                        </div>
-                                    ) : (
-                                        <span className="text-[#16201D] dark:text-[#EAE6DE]">{Number(product.price).toFixed(2)} <span className="text-[10px] font-normal text-[#6A746F] dark:text-[#4A5A55]">JD</span></span>
-                                    )}
-                                </td>
-                                <td className="px-6 py-4 hidden sm:table-cell">
-                                    <StockCell product={product} />
-                                </td>
-                                <td className="px-6 py-4 hidden lg:table-cell">
-                                    <span className={`text-[10px] tracking-wider uppercase px-2.5 py-1 rounded-full font-semibold ${product.is_active ? 'bg-[#1F5B4A]/10 text-[#1F5B4A] dark:bg-[#3D9E7A]/15 dark:text-[#3D9E7A]' : 'bg-[#F2EDE0] text-[#6A746F] dark:bg-[#1C2822] dark:text-[#4A5A55]'}`}>
-                                        {product.is_active ? 'Active' : 'Hidden'}
-                                    </span>
-                                </td>
-                                <td className="px-6 py-4">
-                                    <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <button onClick={() => handleDuplicate(product)}
-                                            className="w-8 h-8 rounded-lg flex items-center justify-center text-[#6A746F] dark:text-[#4A5A55] hover:bg-[#1F5B4A]/10 dark:hover:bg-[#3D9E7A]/15 hover:text-[#1F5B4A] dark:hover:text-[#3D9E7A] transition-all"
-                                            title="Duplicate">
-                                            <Copy className="w-3.5 h-3.5" />
-                                        </button>
-                                        <Link href={`/admin/products/${product.id}/edit`}
-                                            className="w-8 h-8 rounded-lg flex items-center justify-center text-[#6A746F] dark:text-[#4A5A55] hover:bg-[#1F5B4A]/10 dark:hover:bg-[#3D9E7A]/15 hover:text-[#1F5B4A] dark:hover:text-[#3D9E7A] transition-all">
-                                            <Pencil className="w-3.5 h-3.5" />
-                                        </Link>
-                                        <button onClick={() => handleDelete(product)}
-                                            className="w-8 h-8 rounded-lg flex items-center justify-center text-[#6A746F] dark:text-[#4A5A55] hover:bg-red-50 dark:hover:bg-red-950/30 hover:text-red-500 dark:hover:text-red-400 transition-all">
-                                            <Trash2 className="w-3.5 h-3.5" />
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                        ))}
-                        {products.data.length === 0 && (
+            {/* ── Table ── */}
+            <div className="w" style={{ padding: 0, overflow: 'hidden' }}>
+                <div style={{ overflowX: 'auto' }}>
+                    <table className="tbl">
+                        <colgroup>
+                            <col style={{ width: '42%' }} />
+                            <col style={{ width: '15%' }} />
+                            <col style={{ width: '13%' }} />
+                            <col style={{ width: '13%' }} />
+                            <col style={{ width: '10%' }} />
+                            <col style={{ width: '7%' }} />
+                        </colgroup>
+                        <thead>
                             <tr>
-                                <td colSpan={6} className="px-6 py-20 text-center">
-                                    <Package className="w-8 h-8 mx-auto mb-3 text-[#D7CFBE] dark:text-[#2A3530]" />
-                                    <p className="text-sm text-[#6A746F] dark:text-[#4A5A55]">No products match your filters.</p>
-                                    {hasFilters && (
-                                        <button onClick={() => { setSearch(''); setCategory(''); setStock(''); router.get('/admin/products', {}, { preserveState: true, replace: true }); }}
-                                            className="mt-2 text-xs text-[#1F5B4A] dark:text-[#3D9E7A] hover:underline">Clear filters</button>
-                                    )}
-                                </td>
+                                <th>Product</th>
+                                <th>Category</th>
+                                <th>Price</th>
+                                <th>Stock</th>
+                                <th>Status</th>
+                                <th></th>
                             </tr>
-                        )}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            {products.data.filter(p => !hiddenIds.has(p.id)).map(product => (
+                                <tr key={product.id}>
+                                    <td>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                            <div style={{ width: 32, height: 32, borderRadius: 3, overflow: 'hidden', background: 'var(--bg-sunk)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                {product.featured_image
+                                                    ? <img src={product.featured_image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                    : <Package size={13} style={{ color: 'var(--ink-mute)' }} />}
+                                            </div>
+                                            <div style={{ minWidth: 0 }}>
+                                                <span className="nm" style={{ fontSize: 14, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{product.name}</span>
+                                                <span style={{ display: 'flex', gap: 8, fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--ink-mute)', marginTop: 1 }}>
+                                                    {product.sku && <span>{product.sku}</span>}
+                                                    {velocity && velocity[product.id] > 0 && <span>{velocity[product.id]}/mo</span>}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td style={{ color: 'var(--ink-soft)', fontSize: 12 }}>{product.category ?? '—'}</td>
+                                    <td>
+                                        {product.sale_price ? (
+                                            <div>
+                                                <span className="num" style={{ color: 'var(--ink-mute)', textDecoration: 'line-through', fontSize: 10 }}>{Number(product.price).toFixed(2)}</span>
+                                                <span className="num" style={{ display: 'block', fontWeight: 600 }}>{Number(product.sale_price).toFixed(2)} <span style={{ fontSize: 9, fontWeight: 400, color: 'var(--ink-mute)' }}>JD</span></span>
+                                            </div>
+                                        ) : (
+                                            <span className="num">{Number(product.price).toFixed(2)} <span style={{ fontSize: 9, color: 'var(--ink-mute)' }}>JD</span></span>
+                                        )}
+                                    </td>
+                                    <td><StockCell product={product} /></td>
+                                    <td>
+                                        <span className={`tbl tag ${product.is_active ? 'active' : 'hidden-tag'}`}>
+                                            {product.is_active ? 'Active' : 'Hidden'}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div className="tbl-actions">
+                                            <button onClick={() => handleDuplicate(product)} className="tbl-icon-btn" title="Duplicate"><Copy size={13} /></button>
+                                            <Link href={`/admin/products/${product.id}/edit`} className="tbl-icon-btn"><Pencil size={13} /></Link>
+                                            <button onClick={() => handleDelete(product)} className="tbl-icon-btn danger"><Trash2 size={13} /></button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))}
+                            {products.data.length === 0 && (
+                                <tr>
+                                    <td colSpan={6} style={{ textAlign: 'center', paddingTop: 64, paddingBottom: 64 }}>
+                                        <Package size={28} style={{ margin: '0 auto 12px', color: 'var(--ink-mute)', display: 'block' }} />
+                                        <p style={{ fontFamily: 'var(--font-display)', fontStyle: 'italic', color: 'var(--ink-mute)', fontSize: 17 }}>No products match your filters.</p>
+                                        {hasFilters && (
+                                            <button onClick={() => { setSearch(''); setCategory(''); setStock(''); router.get('/admin/products', {}, { preserveState: true, replace: true }); }}
+                                                style={{ marginTop: 8, fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', letterSpacing: '.1em', textTransform: 'uppercase' }}>
+                                                Clear filters
+                                            </button>
+                                        )}
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
-            {/* Pagination */}
+            {/* ── Pagination ── */}
             {products.last_page > 1 && (
-                <div className="flex items-center justify-center gap-1.5 mt-7">
+                <div className="pager">
                     {products.links.map((link, i) => {
-                        if (!link.url) return (
-                            <span key={i} className="px-3.5 py-2 rounded-lg text-xs text-[#B8B2A8] dark:text-[#3A4A45]" dangerouslySetInnerHTML={{ __html: link.label }} />
-                        );
+                        if (!link.url) return <span key={i} className="pager-item disabled" dangerouslySetInnerHTML={{ __html: link.label }} />;
                         const page = new URL(link.url).searchParams.get('page') ?? '1';
                         return (
                             <button key={i} onClick={() => applyFilters({ page })}
-                                className={`px-3.5 py-2 rounded-lg text-xs font-medium transition-all ${link.active ? 'bg-[#1F5B4A] dark:bg-[#3D9E7A] text-white shadow-sm' : 'border border-[#D7CFBE] dark:border-[#2A3530] text-[#6A746F] dark:text-[#4A5A55] hover:border-[#1F5B4A] dark:hover:border-[#3D9E7A] hover:text-[#1F5B4A] dark:hover:text-[#3D9E7A] bg-white dark:bg-[#141C19]'}`}
+                                className={`pager-item${link.active ? ' active' : ''}`}
                                 dangerouslySetInnerHTML={{ __html: link.label }}
                             />
                         );
                     })}
                 </div>
             )}
-        </AdminLayout>
+        </LedgerLayout>
     );
 }
+
+/* ─── BulkImageModal ──────────────────────────────────────────────────── */
 
 function BulkImageModal({ all_products: allProducts, onClose }: { all_products: Product[]; onClose: () => void }) {
     const { data, setData, post, processing, progress } = useForm<{ images: Record<string, File> }>({ images: {} });
     const [previews, setPreviews] = useState<Record<number, string>>({});
     const [showAll, setShowAll] = useState(false);
-
     const [bulkSearch, setBulkSearch] = useState('');
+
     const base = showAll ? allProducts : allProducts.filter(p => !p.featured_image);
     const displayed = bulkSearch
         ? base.filter(p => p.name.toLowerCase().includes(bulkSearch.toLowerCase()) || (p.sku ?? '').toLowerCase().includes(bulkSearch.toLowerCase()))
@@ -339,8 +323,7 @@ function BulkImageModal({ all_products: allProducts, onClose }: { all_products: 
     }
 
     function removeFile(productId: number) {
-        const imgs = { ...data.images };
-        delete imgs[productId];
+        const imgs = { ...data.images }; delete imgs[productId];
         setData('images', imgs);
         setPreviews(prev => {
             if (prev[productId]) URL.revokeObjectURL(prev[productId]);
@@ -359,79 +342,56 @@ function BulkImageModal({ all_products: allProducts, onClose }: { all_products: 
     const pendingCount = Object.keys(data.images).length;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 dark:bg-black/60 backdrop-blur-sm p-4">
-            <div className="bg-white dark:bg-[#0E1512] w-full max-w-2xl max-h-[90vh] rounded-2xl border border-[#E8E1D0] dark:border-[#1C2822] shadow-2xl flex flex-col overflow-hidden">
-                <div className="flex items-center justify-between px-7 py-5 border-b border-[#E8E1D0] dark:border-[#1C2822]">
+        <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,.45)', backdropFilter: 'blur(6px)', padding: 16 }}>
+            <div style={{ background: 'var(--bg-elev)', width: '100%', maxWidth: 640, maxHeight: '90vh', borderRadius: 6, border: '.5px solid var(--rule)', boxShadow: '0 32px 80px rgba(0,0,0,.25)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', padding: '20px 24px', borderBottom: '.5px solid var(--hair)' }}>
                     <div>
-                        <h2 className="font-semibold text-[#16201D] dark:text-[#EAE6DE]">Bulk Image Upload</h2>
-                        <p className="text-xs text-[#6A746F] dark:text-[#4A5A55] mt-0.5">
+                        <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, marginBottom: 2 }}>Bulk Image Upload</div>
+                        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--ink-mute)', letterSpacing: '.1em' }}>
                             {displayed.length} product{displayed.length !== 1 ? 's' : ''} shown
                             {!showAll && allProducts.some(p => p.featured_image) && (
-                                <button onClick={() => setShowAll(true)} className="ml-2 text-[#1F5B4A] dark:text-[#3D9E7A] hover:underline">show all</button>
+                                <button onClick={() => setShowAll(true)} style={{ marginLeft: 8, color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 'inherit', letterSpacing: 'inherit' }}>show all</button>
                             )}
                             {showAll && (
-                                <button onClick={() => setShowAll(false)} className="ml-2 text-[#1F5B4A] dark:text-[#3D9E7A] hover:underline">show missing only</button>
+                                <button onClick={() => setShowAll(false)} style={{ marginLeft: 8, color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 'inherit', letterSpacing: 'inherit' }}>show missing only</button>
                             )}
-                        </p>
-                    </div>
-                    <button onClick={onClose} className="w-8 h-8 rounded-lg flex items-center justify-center text-[#6A746F] dark:text-[#4A5A55] hover:bg-[#F2EDE0] dark:hover:bg-[#1C2822] transition-colors">
-                        <X className="w-4 h-4" />
-                    </button>
-                </div>
-
-                <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
-                    <div className="px-7 py-3 border-b border-[#E8E1D0] dark:border-[#1C2822]">
-                        <div className="relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#B8B2A8] dark:text-[#3A4A45]" />
-                            <input
-                                value={bulkSearch}
-                                onChange={e => setBulkSearch(e.target.value)}
-                                placeholder="Search products…"
-                                className="w-full pl-9 pr-3 py-2 text-xs rounded-lg border border-[#D7CFBE] dark:border-[#2A3530] bg-white dark:bg-[#141C19] text-[#16201D] dark:text-[#EAE6DE] placeholder-[#B8B2A8] dark:placeholder-[#3A4A45] focus:outline-none focus:border-[#1F5B4A] dark:focus:border-[#3D9E7A]"
-                            />
                         </div>
                     </div>
-                    <div className="flex-1 overflow-y-auto px-7 py-4 space-y-2">
+                    <button onClick={onClose} className="tbl-icon-btn"><X size={14} /></button>
+                </div>
+
+                <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
+                    <div style={{ padding: '10px 24px', borderBottom: '.5px solid var(--hair)' }}>
+                        <div style={{ position: 'relative' }}>
+                            <Search size={12} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--ink-mute)' }} />
+                            <input value={bulkSearch} onChange={e => setBulkSearch(e.target.value)} placeholder="Search products…"
+                                className="tbl-input" style={{ paddingLeft: 28, fontSize: 12 }} />
+                        </div>
+                    </div>
+                    <div style={{ flex: 1, overflowY: 'auto', padding: '12px 24px', display: 'flex', flexDirection: 'column', gap: 8 }}>
                         {displayed.length === 0 && (
-                            <p className="text-sm text-center text-[#6A746F] dark:text-[#4A5A55] py-10">
-                                All products already have images.
-                                <button type="button" onClick={() => setShowAll(true)} className="ml-1 text-[#1F5B4A] dark:text-[#3D9E7A] hover:underline">Show all</button>
+                            <p style={{ textAlign: 'center', padding: '40px 0', fontFamily: 'var(--font-display)', fontStyle: 'italic', color: 'var(--ink-mute)', fontSize: 16 }}>
+                                All products already have images.{' '}
+                                <button type="button" onClick={() => setShowAll(true)} style={{ color: 'var(--accent)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontStyle: 'inherit', fontSize: 'inherit' }}>Show all</button>
                             </p>
                         )}
-                        {displayed.map(product => {
-                            const preview = previews[product.id];
-                            const current = product.featured_image;
-                            const hasNew = !!data.images[product.id];
-                            return (
-                                <BulkImageRow
-                                    key={product.id}
-                                    product={product}
-                                    preview={preview}
-                                    current={current}
-                                    hasNew={hasNew}
-                                    onPick={pickFile}
-                                    onRemove={removeFile}
-                                />
-                            );
-                        })}
+                        {displayed.map(product => (
+                            <BulkImageRow key={product.id} product={product} preview={previews[product.id]} current={product.featured_image}
+                                hasNew={!!data.images[product.id]} onPick={pickFile} onRemove={removeFile} />
+                        ))}
                     </div>
-
-                    <div className="px-7 py-4 border-t border-[#E8E1D0] dark:border-[#1C2822] flex items-center gap-3">
+                    <div style={{ padding: '14px 24px', borderTop: '.5px solid var(--hair)', display: 'flex', alignItems: 'center', gap: 8, position: 'relative' }}>
                         {progress && (
-                            <div className="w-full bg-[#F2EDE0] dark:bg-[#1C2822] h-1 rounded-full overflow-hidden absolute left-0 top-0">
-                                <div className="bg-[#1F5B4A] dark:bg-[#3D9E7A] h-full transition-all" style={{ width: `${progress.percentage}%` }} />
+                            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 1, background: 'var(--hair)', overflow: 'hidden' }}>
+                                <div style={{ background: 'var(--accent)', height: '100%', width: `${progress.percentage}%`, transition: 'width .3s' }} />
                             </div>
                         )}
-                        <button type="submit" disabled={pendingCount === 0 || processing}
-                            className="px-6 py-2.5 rounded-lg bg-[#1F5B4A] dark:bg-[#3D9E7A] text-white text-xs font-semibold hover:bg-[#2D7A65] dark:hover:bg-[#52B892] transition-colors disabled:opacity-40">
-                            {processing ? 'Uploading…' : `Upload ${pendingCount > 0 ? pendingCount + ' image' + (pendingCount !== 1 ? 's' : '') : ''}`}
+                        <button type="submit" disabled={pendingCount === 0 || processing} className="btn">
+                            {processing ? 'Uploading…' : `Upload${pendingCount > 0 ? ` ${pendingCount} image${pendingCount !== 1 ? 's' : ''}` : ''}`}
                         </button>
-                        <button type="button" onClick={onClose}
-                            className="px-5 py-2.5 rounded-lg text-xs font-semibold border border-[#D7CFBE] dark:border-[#2A3530] text-[#6A746F] dark:text-[#4A5A55] hover:border-[#6A746F] dark:hover:border-[#4A5A55] hover:text-[#16201D] dark:hover:text-[#EAE6DE] transition-all">
-                            Cancel
-                        </button>
+                        <button type="button" onClick={onClose} className="btn btn-ghost">Cancel</button>
                         {pendingCount > 0 && (
-                            <span className="ml-auto text-xs text-[#6A746F] dark:text-[#4A5A55]">{pendingCount} selected</span>
+                            <span style={{ marginLeft: 'auto', fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--ink-mute)' }}>{pendingCount} selected</span>
                         )}
                     </div>
                 </form>
@@ -446,45 +406,37 @@ function BulkImageRow({ product, preview, current, hasNew, onPick, onRemove }: {
 }) {
     const inputRef = useRef<HTMLInputElement>(null);
     const [dragOver, setDragOver] = useState(false);
-
     const displayImage = preview ?? current;
 
     return (
-        <div className={`flex items-center gap-4 p-3 rounded-xl border transition-all ${hasNew ? 'border-[#1F5B4A] dark:border-[#3D9E7A] bg-[#1F5B4A]/5 dark:bg-[#3D9E7A]/10' : 'border-[#E8E1D0] dark:border-[#1C2822] hover:border-[#D7CFBE] dark:hover:border-[#2A3530]'}`}>
-            <div className="w-12 h-12 rounded-lg overflow-hidden bg-[#F2EDE0] dark:bg-[#1C2822] flex-shrink-0 flex items-center justify-center">
-                {displayImage
-                    ? <img src={displayImage} alt="" className="w-full h-full object-cover" />
-                    : <Package className="w-5 h-5 text-[#B8B2A8] dark:text-[#3A4A45]" />}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 10, borderRadius: 3, border: `.5px solid ${hasNew ? 'var(--accent)' : 'var(--rule)'}`, background: hasNew ? 'rgba(31,91,74,.04)' : 'var(--bg-elev)', transition: 'border-color .12s' }}>
+            <div style={{ width: 44, height: 44, borderRadius: 3, overflow: 'hidden', background: 'var(--bg-sunk)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {displayImage ? <img src={displayImage} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <Package size={16} style={{ color: 'var(--ink-mute)' }} />}
             </div>
-
-            <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-[#16201D] dark:text-[#EAE6DE] truncate">{product.name}</p>
-                {product.sku && <p className="text-[11px] text-[#6A746F] dark:text-[#4A5A55] font-mono">{product.sku}</p>}
-                {hasNew && <p className="text-[11px] text-[#1F5B4A] dark:text-[#3D9E7A] mt-0.5">New image selected</p>}
+            <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: 15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{product.name}</div>
+                {product.sku && <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--ink-mute)' }}>{product.sku}</div>}
+                {hasNew && <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--accent)', marginTop: 1 }}>New image selected</div>}
             </div>
-
             <div
-                className={`flex items-center gap-2 px-3 py-2 rounded-lg border-2 border-dashed cursor-pointer transition-all text-xs ${dragOver ? 'border-[#1F5B4A] dark:border-[#3D9E7A] bg-[#1F5B4A]/10' : 'border-[#D7CFBE] dark:border-[#2A3530] hover:border-[#1F5B4A] dark:hover:border-[#3D9E7A]'} text-[#6A746F] dark:text-[#4A5A55]`}
+                style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', borderRadius: 2, border: `1.5px dashed ${dragOver ? 'var(--accent)' : 'var(--rule)'}`, cursor: 'pointer', fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--ink-mute)', background: dragOver ? 'rgba(31,91,74,.06)' : 'transparent', transition: 'all .12s', flexShrink: 0 }}
                 onClick={() => inputRef.current?.click()}
                 onDragOver={e => { e.preventDefault(); setDragOver(true); }}
                 onDragLeave={() => setDragOver(false)}
                 onDrop={e => { e.preventDefault(); setDragOver(false); const f = e.dataTransfer.files[0]; if (f) onPick(product.id, f); }}
             >
-                <ImagePlus className="w-3.5 h-3.5 flex-shrink-0" />
-                <span>{hasNew ? 'Change' : 'Pick image'}</span>
-                <input ref={inputRef} type="file" accept="image/*" className="hidden"
+                <ImagePlus size={12} /> {hasNew ? 'Change' : 'Pick'}
+                <input ref={inputRef} type="file" accept="image/*" style={{ display: 'none' }}
                     onChange={e => { const f = e.target.files?.[0]; if (f) onPick(product.id, f); e.target.value = ''; }} />
             </div>
-
             {hasNew && (
-                <button type="button" onClick={() => onRemove(product.id)}
-                    className="w-7 h-7 rounded-lg flex items-center justify-center text-[#6A746F] dark:text-[#4A5A55] hover:bg-red-50 dark:hover:bg-red-950/30 hover:text-red-500 dark:hover:text-red-400 transition-all flex-shrink-0">
-                    <X className="w-3.5 h-3.5" />
-                </button>
+                <button type="button" onClick={() => onRemove(product.id)} className="tbl-icon-btn danger"><X size={13} /></button>
             )}
         </div>
     );
 }
+
+/* ─── ImportModal ──────────────────────────────────────────────────────── */
 
 function ImportModal({ onClose }: { onClose: () => void }) {
     const { data, setData, post, processing, errors, progress } = useForm<{ csv_file: File | null }>({ csv_file: null });
@@ -492,52 +444,48 @@ function ImportModal({ onClose }: { onClose: () => void }) {
     const inputRef = useRef<HTMLInputElement>(null);
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 dark:bg-black/60 backdrop-blur-sm p-4">
-            <div className="bg-white dark:bg-[#0E1512] w-full max-w-lg rounded-2xl border border-[#E8E1D0] dark:border-[#1C2822] shadow-2xl overflow-hidden">
-                <div className="flex items-center justify-between px-7 py-5 border-b border-[#E8E1D0] dark:border-[#1C2822]">
-                    <h2 className="font-semibold text-[#16201D] dark:text-[#EAE6DE]">Import Products via CSV</h2>
-                    <button onClick={onClose} className="w-8 h-8 rounded-lg flex items-center justify-center text-[#6A746F] dark:text-[#4A5A55] hover:bg-[#F2EDE0] dark:hover:bg-[#1C2822] transition-colors">
-                        <X className="w-4 h-4" />
-                    </button>
+        <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,.45)', backdropFilter: 'blur(6px)', padding: 16 }}>
+            <div style={{ background: 'var(--bg-elev)', width: '100%', maxWidth: 480, borderRadius: 6, border: '.5px solid var(--rule)', boxShadow: '0 32px 80px rgba(0,0,0,.25)', overflow: 'hidden' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px 24px', borderBottom: '.5px solid var(--hair)' }}>
+                    <div style={{ fontFamily: 'var(--font-display)', fontSize: 22 }}>Import Products via CSV</div>
+                    <button onClick={onClose} className="tbl-icon-btn"><X size={14} /></button>
                 </div>
                 <form onSubmit={e => { e.preventDefault(); if (!data.csv_file) return; post('/admin/products/import', { forceFormData: true, onSuccess: onClose }); }}
-                    className="px-7 py-6 space-y-5">
-                    <p className="text-xs text-[#6A746F] dark:text-[#4A5A55] leading-relaxed">
-                        Required columns: <code className="text-[11px] bg-[#F8F5EE] dark:bg-[#141C19] px-1.5 py-0.5 rounded text-[#16201D] dark:text-[#9AA8A3] border border-[#E8E1D0] dark:border-[#2A3530]">name</code> and <code className="text-[11px] bg-[#F8F5EE] dark:bg-[#141C19] px-1.5 py-0.5 rounded text-[#16201D] dark:text-[#9AA8A3] border border-[#E8E1D0] dark:border-[#2A3530]">price</code>. Existing products matched by SKU are updated.
+                    style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+                    <p style={{ fontFamily: 'var(--font-text)', fontSize: 12, color: 'var(--ink-mute)', lineHeight: 1.6 }}>
+                        Required columns: <code style={{ fontFamily: 'var(--font-mono)', fontSize: 11, background: 'var(--bg-sunk)', padding: '1px 6px', borderRadius: 2 }}>name</code> and <code style={{ fontFamily: 'var(--font-mono)', fontSize: 11, background: 'var(--bg-sunk)', padding: '1px 6px', borderRadius: 2 }}>price</code>. Existing products matched by SKU are updated.
                     </p>
                     <div
-                        className={`border-2 border-dashed rounded-xl text-center py-10 px-6 cursor-pointer transition-all ${dragOver ? 'border-[#1F5B4A] dark:border-[#3D9E7A] bg-[#1F5B4A]/5 dark:bg-[#3D9E7A]/10' : 'border-[#D7CFBE] dark:border-[#2A3530] hover:border-[#1F5B4A] dark:hover:border-[#3D9E7A]'}`}
+                        className="upload-zone"
+                        style={dragOver ? { borderColor: 'var(--accent)', background: 'rgba(31,91,74,.04)' } : {}}
                         onClick={() => inputRef.current?.click()}
                         onDragOver={e => { e.preventDefault(); setDragOver(true); }}
                         onDragLeave={() => setDragOver(false)}
                         onDrop={e => { e.preventDefault(); setDragOver(false); const f = e.dataTransfer.files[0]; if (f) setData('csv_file', f); }}
                     >
-                        <Upload className={`w-8 h-8 mx-auto mb-3 transition-colors ${dragOver ? 'text-[#1F5B4A] dark:text-[#3D9E7A]' : 'text-[#B8B2A8] dark:text-[#3A4A45]'}`} />
+                        <Upload size={20} style={{ margin: '0 auto 8px', display: 'block', color: dragOver ? 'var(--accent)' : 'var(--ink-mute)' }} />
                         {data.csv_file ? (
-                            <p className="text-sm font-semibold text-[#16201D] dark:text-[#EAE6DE]">{data.csv_file.name}</p>
+                            <p style={{ color: 'var(--ink)', fontSize: 13 }}>{data.csv_file.name}</p>
                         ) : (
                             <>
-                                <p className="text-sm text-[#6A746F] dark:text-[#4A5A55]">Drop a CSV file or click to browse</p>
-                                <p className="text-xs text-[#B8B2A8] dark:text-[#3A4A45] mt-1">Max 5 MB</p>
+                                <p>Drop a CSV file or click to browse</p>
+                                <p style={{ marginTop: 2 }}>Max 5 MB</p>
                             </>
                         )}
-                        <input ref={inputRef} type="file" accept=".csv,text/csv" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) setData('csv_file', f); }} />
+                        <input ref={inputRef} type="file" accept=".csv,text/csv" style={{ display: 'none' }}
+                            onChange={e => { const f = e.target.files?.[0]; if (f) setData('csv_file', f); }} />
                     </div>
-                    {errors.csv_file && <p className="text-red-500 dark:text-red-400 text-xs">{errors.csv_file}</p>}
+                    {errors.csv_file && <p className="form-err">{errors.csv_file}</p>}
                     {progress && (
-                        <div className="w-full bg-[#F2EDE0] dark:bg-[#1C2822] h-1.5 rounded-full overflow-hidden">
-                            <div className="bg-[#1F5B4A] dark:bg-[#3D9E7A] h-full transition-all duration-300" style={{ width: `${progress.percentage}%` }} />
+                        <div style={{ width: '100%', height: 2, background: 'var(--hair)', borderRadius: 1, overflow: 'hidden' }}>
+                            <div style={{ background: 'var(--accent)', height: '100%', transition: 'width .3s', width: `${progress.percentage}%` }} />
                         </div>
                     )}
-                    <div className="flex gap-3 pt-1">
-                        <button type="submit" disabled={!data.csv_file || processing}
-                            className="px-7 py-2.5 rounded-lg bg-[#1F5B4A] dark:bg-[#3D9E7A] text-white text-xs font-semibold hover:bg-[#2D7A65] dark:hover:bg-[#52B892] transition-colors disabled:opacity-40">
+                    <div style={{ display: 'flex', gap: 8 }}>
+                        <button type="submit" disabled={!data.csv_file || processing} className="btn">
                             {processing ? 'Importing…' : 'Import'}
                         </button>
-                        <button type="button" onClick={onClose}
-                            className="px-5 py-2.5 rounded-lg text-xs font-semibold border border-[#D7CFBE] dark:border-[#2A3530] text-[#6A746F] dark:text-[#4A5A55] hover:border-[#6A746F] dark:hover:border-[#4A5A55] hover:text-[#16201D] dark:hover:text-[#EAE6DE] transition-all">
-                            Cancel
-                        </button>
+                        <button type="button" onClick={onClose} className="btn btn-ghost">Cancel</button>
                     </div>
                 </form>
             </div>

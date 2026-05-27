@@ -1,36 +1,12 @@
 import { Head, router, useForm } from '@inertiajs/react';
 import { useState, useRef, useEffect } from 'react';
 import { Upload, Trash2, X, Link2, Check, Search, ChevronLeft, ChevronRight, Images, RefreshCw } from 'lucide-react';
-import AdminLayout from '@/layouts/admin-layout';
+import LedgerLayout from '@/layouts/ledger-layout';
 
-interface MediaItem {
-    id: number;
-    path: string;
-    filename: string;
-    size: number | null;
-    url: string;
-    created_at: string;
-}
-
-interface ProductItem {
-    id: number;
-    name: string;
-    featured_image: string | null;
-}
-
-interface PaginatedMedia {
-    data: MediaItem[];
-    current_page: number;
-    last_page: number;
-    total: number;
-    links: { url: string | null; label: string; active: boolean }[];
-}
-
-interface Props {
-    media: PaginatedMedia;
-    products: ProductItem[];
-    filters: { search?: string };
-}
+interface MediaItem { id: number; path: string; filename: string; size: number | null; url: string; created_at: string }
+interface ProductItem { id: number; name: string; featured_image: string | null }
+interface PaginatedMedia { data: MediaItem[]; current_page: number; last_page: number; total: number; links: { url: string | null; label: string; active: boolean }[] }
+interface Props { media: PaginatedMedia; products: ProductItem[]; filters: { search?: string } }
 
 function formatBytes(bytes: number | null): string {
     if (!bytes) return '';
@@ -84,130 +60,99 @@ export default function MediaIndex({ media, products, filters }: Props) {
         router.get('/admin/media', { page }, { preserveState: true, preserveScroll: true, replace: true });
     }
 
+    const actions = (
+        <div style={{ display: 'flex', gap: 6 }}>
+            <button onClick={handleSync} disabled={syncing} className="btn btn-ghost" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <RefreshCw size={13} className={syncing ? 'animate-spin' : ''} />
+                {syncing ? 'Syncing…' : 'Sync from Spaces'}
+            </button>
+            <button onClick={() => setUploadOpen(true)} className="btn" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Upload size={13} /> Upload Images
+            </button>
+        </div>
+    );
+
     return (
-        <AdminLayout>
+        <LedgerLayout active="media" title={<>The <em>Media</em></>} eyebrow={`${media.total} image${media.total !== 1 ? 's' : ''}`} actions={actions}>
             <Head title="Media Library — Admin" />
 
-            {/* Header */}
-            <div className="flex items-start justify-between mb-7 gap-4">
-                <div>
-                    <h1 className="text-3xl font-light text-[#16201D] dark:text-[#EAE6DE] tracking-tight">Media Library</h1>
-                    <p className="text-sm text-[#6A746F] dark:text-[#4A5A55] mt-1">{media.total} image{media.total !== 1 ? 's' : ''}</p>
-                </div>
-                <div className="flex items-center gap-2">
-                    <button
-                        onClick={handleSync}
-                        disabled={syncing}
-                        title="Scan Spaces and import any missing images"
-                        className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-[#D7CFBE] dark:border-[#2A3530] text-[#6A746F] dark:text-[#4A5A55] text-xs font-semibold hover:border-[#1F5B4A] dark:hover:border-[#3D9E7A] hover:text-[#1F5B4A] dark:hover:text-[#3D9E7A] transition-colors disabled:opacity-50"
-                    >
-                        <RefreshCw className={`w-3.5 h-3.5 ${syncing ? 'animate-spin' : ''}`} />
-                        {syncing ? 'Syncing…' : 'Sync from Spaces'}
-                    </button>
-                    <button
-                        onClick={() => setUploadOpen(true)}
-                        className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#1F5B4A] dark:bg-[#3D9E7A] text-white text-xs font-semibold hover:bg-[#2D7A65] dark:hover:bg-[#52B892] transition-colors shadow-sm"
-                    >
-                        <Upload className="w-3.5 h-3.5" /> Upload Images
-                    </button>
+            {/* ── Search ── */}
+            <div className="tbl-filters" style={{ paddingBottom: 20 }}>
+                <div className="tbl-search" style={{ maxWidth: 360 }}>
+                    <Search className="search-ic" size={14} />
+                    <input
+                        value={search}
+                        onChange={e => applySearch(e.target.value)}
+                        placeholder="Search by filename…"
+                        className="tbl-input"
+                    />
+                    {search && (
+                        <button onClick={() => applySearch('')} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ink-mute)', display: 'flex' }}>
+                            <X size={14} />
+                        </button>
+                    )}
                 </div>
             </div>
 
-            {/* Search */}
-            <div className="relative mb-6 max-w-sm">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#B8B2A8] dark:text-[#3A4A45]" />
-                <input
-                    value={search}
-                    onChange={e => applySearch(e.target.value)}
-                    placeholder="Search by filename…"
-                    className="w-full pl-10 pr-9 py-2.5 rounded-lg border border-[#D7CFBE] dark:border-[#2A3530] bg-white dark:bg-[#141C19] text-[#16201D] dark:text-[#EAE6DE] text-sm placeholder-[#B8B2A8] dark:placeholder-[#3A4A45] focus:outline-none focus:border-[#1F5B4A] dark:focus:border-[#3D9E7A] transition-colors"
-                />
-                {search && (
-                    <button onClick={() => applySearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#B8B2A8] dark:text-[#3A4A45] hover:text-[#6A746F]">
-                        <X className="w-4 h-4" />
-                    </button>
-                )}
-            </div>
-
+            {/* ── Upload panel ── */}
             {uploadOpen && <UploadPanel onClose={() => setUploadOpen(false)} />}
 
-            {/* Grid */}
+            {/* ── Grid ── */}
             {media.data.length === 0 ? (
-                <div className="text-center py-24">
-                    <Images className="w-10 h-10 mx-auto mb-4 text-[#D7CFBE] dark:text-[#2A3530]" />
-                    <p className="text-sm text-[#6A746F] dark:text-[#4A5A55]">No images yet.</p>
-                    <p className="text-xs text-[#B8B2A8] dark:text-[#3A4A45] mt-1.5">
-                        Upload new images, or click <strong>Sync from Spaces</strong> to import existing ones from your bucket.
+                <div style={{ textAlign: 'center', padding: '80px 0' }}>
+                    <Images size={36} style={{ margin: '0 auto 16px', color: 'var(--ink-mute)', display: 'block' }} />
+                    <p style={{ fontFamily: 'var(--font-display)', fontStyle: 'italic', color: 'var(--ink-mute)', fontSize: 18 }}>No images yet.</p>
+                    <p style={{ fontFamily: 'var(--font-text)', fontSize: 12, color: 'var(--ink-mute)', marginTop: 6 }}>
+                        Upload new images, or click <strong>Sync from Spaces</strong> to import from your bucket.
                     </p>
                 </div>
             ) : (
-                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-3">
+                <div className="media-grid">
                     {media.data.map(item => (
                         <div
                             key={item.id}
                             onClick={() => setSelected(item)}
-                            className={`group relative aspect-square rounded-xl overflow-hidden cursor-pointer border-2 transition-all ${
-                                selected?.id === item.id
-                                    ? 'border-[#1F5B4A] dark:border-[#3D9E7A] shadow-lg'
-                                    : 'border-transparent hover:border-[#D7CFBE] dark:hover:border-[#2A3530]'
-                            } bg-[#F2EDE0] dark:bg-[#1C2822]`}
+                            className="media-item"
+                            style={selected?.id === item.id ? { borderColor: 'var(--accent)' } : {}}
                         >
-                            <img
-                                src={item.url}
-                                alt={item.filename}
-                                className="w-full h-full object-cover"
-                                loading="lazy"
-                            />
-                            {/* Hover overlay */}
-                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-between p-2">
-                                <div className="flex justify-end gap-1">
-                                    <button
-                                        onClick={e => { e.stopPropagation(); copyUrl(item); }}
-                                        className="w-7 h-7 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center text-white hover:bg-white/40 transition-colors"
-                                        title="Copy URL"
-                                    >
-                                        {copied === item.id ? <Check className="w-3.5 h-3.5" /> : <Link2 className="w-3.5 h-3.5" />}
-                                    </button>
-                                    <button
-                                        onClick={e => { e.stopPropagation(); handleDelete(item); }}
-                                        disabled={deleting === item.id}
-                                        className="w-7 h-7 rounded-lg bg-red-500/80 backdrop-blur-sm flex items-center justify-center text-white hover:bg-red-600 transition-colors disabled:opacity-40"
-                                        title="Delete"
-                                    >
-                                        <Trash2 className="w-3.5 h-3.5" />
-                                    </button>
-                                </div>
-                                <p className="text-[10px] text-white/80 truncate leading-tight">{item.filename}</p>
+                            <img src={item.url} alt={item.filename} loading="lazy" />
+                            <div className="media-overlay">
+                                <button
+                                    onClick={e => { e.stopPropagation(); copyUrl(item); }}
+                                    style={{ width: 28, height: 28, borderRadius: 4, background: 'rgba(255,255,255,.2)', backdropFilter: 'blur(4px)', border: 'none', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                    title="Copy URL"
+                                >
+                                    {copied === item.id ? <Check size={13} /> : <Link2 size={13} />}
+                                </button>
+                                <button
+                                    onClick={e => { e.stopPropagation(); handleDelete(item); }}
+                                    disabled={deleting === item.id}
+                                    style={{ width: 28, height: 28, borderRadius: 4, background: 'rgba(220,38,38,.75)', border: 'none', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: deleting === item.id ? .4 : 1 }}
+                                    title="Delete"
+                                >
+                                    <Trash2 size={13} />
+                                </button>
                             </div>
+                            <div className="media-name">{item.filename}</div>
                         </div>
                     ))}
                 </div>
             )}
 
-            {/* Pagination */}
+            {/* ── Pagination ── */}
             {media.last_page > 1 && (
-                <div className="flex items-center justify-center gap-1.5 mt-8">
-                    <button
-                        onClick={() => goPage(media.links[0]?.url)}
-                        disabled={media.current_page === 1}
-                        className="w-9 h-9 rounded-lg flex items-center justify-center border border-[#D7CFBE] dark:border-[#2A3530] text-[#6A746F] dark:text-[#4A5A55] hover:border-[#1F5B4A] dark:hover:border-[#3D9E7A] hover:text-[#1F5B4A] dark:hover:text-[#3D9E7A] disabled:opacity-30 transition-all bg-white dark:bg-[#141C19]"
-                    >
-                        <ChevronLeft className="w-4 h-4" />
+                <div className="pager">
+                    <button onClick={() => goPage(media.links[0]?.url)} disabled={media.current_page === 1} className={`pager-item${media.current_page === 1 ? ' disabled' : ''}`}>
+                        <ChevronLeft size={14} />
                     </button>
-                    <span className="text-sm text-[#6A746F] dark:text-[#4A5A55] px-3">
-                        {media.current_page} / {media.last_page}
-                    </span>
-                    <button
-                        onClick={() => goPage(media.links[media.links.length - 1]?.url)}
-                        disabled={media.current_page === media.last_page}
-                        className="w-9 h-9 rounded-lg flex items-center justify-center border border-[#D7CFBE] dark:border-[#2A3530] text-[#6A746F] dark:text-[#4A5A55] hover:border-[#1F5B4A] dark:hover:border-[#3D9E7A] hover:text-[#1F5B4A] dark:hover:text-[#3D9E7A] disabled:opacity-30 transition-all bg-white dark:bg-[#141C19]"
-                    >
-                        <ChevronRight className="w-4 h-4" />
+                    <span className="pager-item" style={{ cursor: 'default' }}>{media.current_page} / {media.last_page}</span>
+                    <button onClick={() => goPage(media.links[media.links.length - 1]?.url)} disabled={media.current_page === media.last_page} className={`pager-item${media.current_page === media.last_page ? ' disabled' : ''}`}>
+                        <ChevronRight size={14} />
                     </button>
                 </div>
             )}
 
-            {/* Image detail panel */}
+            {/* ── Image detail panel ── */}
             {selected && (
                 <ImagePanel
                     item={selected}
@@ -219,11 +164,11 @@ export default function MediaIndex({ media, products, filters }: Props) {
                     onClose={() => setSelected(null)}
                 />
             )}
-        </AdminLayout>
+        </LedgerLayout>
     );
 }
 
-/* ─── Upload panel ─────────────────────────────────────────────── */
+/* ─── Upload panel ─────────────────────────────────────────────────────── */
 
 function UploadPanel({ onClose }: { onClose: () => void }) {
     const { data, setData, post, processing, progress } = useForm<{ images: File[] }>({ images: [] });
@@ -253,36 +198,35 @@ function UploadPanel({ onClose }: { onClose: () => void }) {
     }
 
     return (
-        <div className="mb-7 rounded-2xl border border-[#E8E1D0] dark:border-[#1C2822] bg-white dark:bg-[#0E1512] shadow-sm overflow-hidden">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-[#E8E1D0] dark:border-[#1C2822]">
-                <span className="font-semibold text-sm text-[#16201D] dark:text-[#EAE6DE]">Upload Images</span>
-                <button onClick={onClose} className="w-7 h-7 rounded-lg flex items-center justify-center text-[#6A746F] dark:text-[#4A5A55] hover:bg-[#F2EDE0] dark:hover:bg-[#1C2822]">
-                    <X className="w-4 h-4" />
-                </button>
+        <div className="w" style={{ marginBottom: 24 }}>
+            <div className="w-head">
+                <span className="w-eyebrow">Upload Images</span>
+                <button onClick={onClose} className="w-action">Close</button>
             </div>
-            <form onSubmit={handleSubmit} className="p-6 space-y-5">
+            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <div
-                    className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${dragOver ? 'border-[#1F5B4A] dark:border-[#3D9E7A] bg-[#1F5B4A]/5 dark:bg-[#3D9E7A]/10' : 'border-[#D7CFBE] dark:border-[#2A3530] hover:border-[#1F5B4A] dark:hover:border-[#3D9E7A]'}`}
+                    className="upload-zone"
+                    style={dragOver ? { borderColor: 'var(--accent)', background: 'rgba(31,91,74,.04)' } : {}}
                     onClick={() => inputRef.current?.click()}
                     onDragOver={e => { e.preventDefault(); setDragOver(true); }}
                     onDragLeave={() => setDragOver(false)}
                     onDrop={e => { e.preventDefault(); setDragOver(false); addFiles(e.dataTransfer.files); }}
                 >
-                    <Upload className={`w-7 h-7 mx-auto mb-2 transition-colors ${dragOver ? 'text-[#1F5B4A] dark:text-[#3D9E7A]' : 'text-[#B8B2A8] dark:text-[#3A4A45]'}`} />
-                    <p className="text-sm text-[#6A746F] dark:text-[#4A5A55]">Drop images here or click to browse</p>
-                    <p className="text-xs text-[#B8B2A8] dark:text-[#3A4A45] mt-1">PNG, JPG, WebP — up to 20 MB each</p>
-                    <input ref={inputRef} type="file" accept="image/*" multiple className="hidden"
+                    <Upload size={24} style={{ margin: '0 auto', display: 'block', color: dragOver ? 'var(--accent)' : 'var(--ink-mute)' }} />
+                    <p>Drop images here or click to browse</p>
+                    <p style={{ marginTop: 2 }}>PNG, JPG, WebP — up to 20 MB each</p>
+                    <input ref={inputRef} type="file" accept="image/*" multiple style={{ display: 'none' }}
                         onChange={e => { addFiles(e.target.files); e.target.value = ''; }} />
                 </div>
 
                 {previews.length > 0 && (
-                    <div className="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 gap-2">
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))', gap: 8 }}>
                         {previews.map((src, i) => (
-                            <div key={i} className="relative aspect-square rounded-lg overflow-hidden group bg-[#F2EDE0] dark:bg-[#1C2822]">
-                                <img src={src} alt="" className="w-full h-full object-cover" />
+                            <div key={i} style={{ position: 'relative', aspectRatio: '1', borderRadius: 3, overflow: 'hidden', background: 'var(--bg-sunk)' }}>
+                                <img src={src} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                 <button type="button" onClick={() => removeFile(i)}
-                                    className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600">
-                                    <X className="w-3 h-3" />
+                                    style={{ position: 'absolute', top: 3, right: 3, width: 18, height: 18, borderRadius: '50%', background: 'rgba(0,0,0,.6)', color: '#fff', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10 }}>
+                                    <X size={10} />
                                 </button>
                             </div>
                         ))}
@@ -290,54 +234,39 @@ function UploadPanel({ onClose }: { onClose: () => void }) {
                 )}
 
                 {progress && (
-                    <div className="w-full bg-[#F2EDE0] dark:bg-[#1C2822] h-1.5 rounded-full overflow-hidden">
-                        <div className="bg-[#1F5B4A] dark:bg-[#3D9E7A] h-full transition-all duration-300" style={{ width: `${progress.percentage}%` }} />
+                    <div style={{ width: '100%', height: 2, background: 'var(--hair)', borderRadius: 1, overflow: 'hidden' }}>
+                        <div style={{ background: 'var(--accent)', height: '100%', transition: 'width .3s', width: `${progress.percentage}%` }} />
                     </div>
                 )}
 
-                <div className="flex items-center gap-3">
-                    <button type="submit" disabled={data.images.length === 0 || processing}
-                        className="px-6 py-2.5 rounded-lg bg-[#1F5B4A] dark:bg-[#3D9E7A] text-white text-xs font-semibold hover:bg-[#2D7A65] dark:hover:bg-[#52B892] transition-colors disabled:opacity-40">
-                        {processing ? 'Uploading…' : `Upload ${data.images.length > 0 ? data.images.length + ' file' + (data.images.length !== 1 ? 's' : '') : ''}`}
+                <div style={{ display: 'flex', gap: 8 }}>
+                    <button type="submit" disabled={data.images.length === 0 || processing} className="btn">
+                        {processing ? 'Uploading…' : `Upload${data.images.length > 0 ? ` ${data.images.length} file${data.images.length !== 1 ? 's' : ''}` : ''}`}
                     </button>
-                    <button type="button" onClick={onClose}
-                        className="px-5 py-2.5 rounded-lg text-xs font-semibold border border-[#D7CFBE] dark:border-[#2A3530] text-[#6A746F] dark:text-[#4A5A55] hover:border-[#6A746F] dark:hover:border-[#4A5A55] hover:text-[#16201D] dark:hover:text-[#EAE6DE] transition-all">
-                        Cancel
-                    </button>
+                    <button type="button" onClick={onClose} className="btn btn-ghost">Cancel</button>
                 </div>
             </form>
         </div>
     );
 }
 
-/* ─── Image detail side panel ──────────────────────────────────── */
+/* ─── Image detail side panel ──────────────────────────────────────────── */
 
 function ImagePanel({ item, products, copied, deleting, onCopy, onDelete, onClose }: {
-    item: MediaItem;
-    products: ProductItem[];
-    copied: boolean;
-    deleting: boolean;
-    onCopy: () => void;
-    onDelete: () => void;
-    onClose: () => void;
+    item: MediaItem; products: ProductItem[]; copied: boolean; deleting: boolean;
+    onCopy: () => void; onDelete: () => void; onClose: () => void;
 }) {
     const [assignOpen, setAssignOpen] = useState(false);
     const [search, setSearch] = useState('');
     const [assigning, setAssigning] = useState(false);
     const [assignedTo, setAssignedTo] = useState<number | null>(null);
 
-    const filtered = products.filter(p =>
-        p.name.toLowerCase().includes(search.toLowerCase())
-    );
+    const filtered = products.filter(p => p.name.toLowerCase().includes(search.toLowerCase()));
 
     function handleAssign(productId: number) {
         setAssigning(true);
         router.post(`/admin/media/${item.id}/assign`, { product_id: productId }, {
-            onSuccess: () => {
-                setAssignedTo(productId);
-                setAssignOpen(false);
-                setTimeout(() => setAssignedTo(null), 2500);
-            },
+            onSuccess: () => { setAssignedTo(productId); setAssignOpen(false); setTimeout(() => setAssignedTo(null), 2500); },
             onFinish: () => setAssigning(false),
         });
     }
@@ -345,111 +274,86 @@ function ImagePanel({ item, products, copied, deleting, onCopy, onDelete, onClos
     const assignedProduct = assignedTo ? products.find(p => p.id === assignedTo) : null;
 
     return (
-        <div className="fixed inset-y-0 right-0 z-50 w-80 flex flex-col bg-white dark:bg-[#0E1512] border-l border-[#E8E1D0] dark:border-[#1C2822] shadow-2xl">
-            {/* Header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-[#E8E1D0] dark:border-[#1C2822]">
-                <span className="font-semibold text-sm text-[#16201D] dark:text-[#EAE6DE] truncate pr-3">{item.filename}</span>
-                <button onClick={onClose} className="w-7 h-7 flex-shrink-0 rounded-lg flex items-center justify-center text-[#6A746F] dark:text-[#4A5A55] hover:bg-[#F2EDE0] dark:hover:bg-[#1C2822]">
-                    <X className="w-4 h-4" />
-                </button>
+        <div style={{ position: 'fixed', insetBlock: 0, right: 0, zIndex: 50, width: 'min(320px, 92vw)', display: 'flex', flexDirection: 'column', background: 'var(--bg-elev)', borderLeft: '.5px solid var(--rule)', boxShadow: '-8px 0 32px rgba(0,0,0,.1)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '.5px solid var(--hair)' }}>
+                <span style={{ fontFamily: 'var(--font-display)', fontSize: 16, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingRight: 12 }}>{item.filename}</span>
+                <button onClick={onClose} className="tbl-icon-btn"><X size={14} /></button>
             </div>
 
-            {/* Image preview */}
-            <div className="p-5 border-b border-[#E8E1D0] dark:border-[#1C2822]">
-                <div className="aspect-square rounded-xl overflow-hidden bg-[#F2EDE0] dark:bg-[#1C2822]">
-                    <img src={item.url} alt={item.filename} className="w-full h-full object-contain" />
+            <div style={{ padding: '16px 20px', borderBottom: '.5px solid var(--hair)' }}>
+                <div style={{ aspectRatio: '1', borderRadius: 3, overflow: 'hidden', background: 'var(--bg-sunk)' }}>
+                    <img src={item.url} alt={item.filename} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                 </div>
             </div>
 
-            {/* Meta */}
-            <div className="px-5 py-4 border-b border-[#E8E1D0] dark:border-[#1C2822] space-y-2">
-                <MetaRow label="Size" value={formatBytes(item.size)} />
-                <MetaRow label="Uploaded" value={new Date(item.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })} />
+            <div style={{ padding: '14px 20px', borderBottom: '.5px solid var(--hair)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {item.size && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9.5, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--ink-mute)' }}>Size</span>
+                        <span style={{ fontFamily: 'var(--font-text)', fontSize: 12 }}>{formatBytes(item.size)}</span>
+                    </div>
+                )}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9.5, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--ink-mute)' }}>Uploaded</span>
+                    <span style={{ fontFamily: 'var(--font-text)', fontSize: 12 }}>{new Date(item.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                </div>
                 <div>
-                    <p className="text-[10px] uppercase tracking-wider text-[#6A746F] dark:text-[#4A5A55] mb-1">URL</p>
-                    <p className="text-[11px] text-[#16201D] dark:text-[#EAE6DE] font-mono break-all leading-relaxed bg-[#F8F5EE] dark:bg-[#141C19] rounded-lg px-2.5 py-2">{item.url}</p>
+                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9.5, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--ink-mute)', marginBottom: 4 }}>URL</div>
+                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, background: 'var(--bg-sunk)', padding: '6px 10px', borderRadius: 2, border: '.5px solid var(--hair)', wordBreak: 'break-all', lineHeight: 1.5 }}>{item.url}</div>
                 </div>
             </div>
 
-            {/* Actions */}
-            <div className="px-5 py-4 space-y-2.5 flex-1 overflow-y-auto">
+            <div style={{ padding: '14px 20px', display: 'flex', flexDirection: 'column', gap: 8, flex: 1, overflowY: 'auto' }}>
                 {assignedProduct && (
-                    <p className="text-xs text-[#1F5B4A] dark:text-[#3D9E7A] flex items-center gap-1.5 mb-2">
-                        <Check className="w-3.5 h-3.5" /> Assigned to "{assignedProduct.name}"
+                    <p style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <Check size={12} /> Assigned to "{assignedProduct.name}"
                     </p>
                 )}
-
-                <button
-                    onClick={onCopy}
-                    className="w-full flex items-center gap-2.5 px-4 py-2.5 rounded-lg border border-[#D7CFBE] dark:border-[#2A3530] text-sm text-[#6A746F] dark:text-[#4A5A55] hover:border-[#1F5B4A] dark:hover:border-[#3D9E7A] hover:text-[#1F5B4A] dark:hover:text-[#3D9E7A] transition-all text-left"
-                >
-                    {copied ? <Check className="w-4 h-4 text-[#1F5B4A] dark:text-[#3D9E7A]" /> : <Link2 className="w-4 h-4" />}
+                <button onClick={onCopy} className="btn btn-ghost" style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start' }}>
+                    {copied ? <Check size={13} /> : <Link2 size={13} />}
                     {copied ? 'Copied!' : 'Copy URL'}
                 </button>
-
-                <button
-                    onClick={() => setAssignOpen(o => !o)}
-                    className="w-full flex items-center gap-2.5 px-4 py-2.5 rounded-lg border border-[#D7CFBE] dark:border-[#2A3530] text-sm text-[#6A746F] dark:text-[#4A5A55] hover:border-[#1F5B4A] dark:hover:border-[#3D9E7A] hover:text-[#1F5B4A] dark:hover:text-[#3D9E7A] transition-all text-left"
-                >
-                    <Images className="w-4 h-4" />
-                    Assign to product
+                <button onClick={() => setAssignOpen(o => !o)} className="btn btn-ghost" style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start' }}>
+                    <Images size={13} /> Assign to product
                 </button>
-
                 {assignOpen && (
-                    <div className="rounded-xl border border-[#E8E1D0] dark:border-[#1C2822] overflow-hidden">
-                        <div className="p-2.5 border-b border-[#E8E1D0] dark:border-[#1C2822] relative">
-                            <Search className="absolute left-4.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#B8B2A8] dark:text-[#3A4A45]" />
+                    <div style={{ border: '.5px solid var(--rule)', borderRadius: 3, overflow: 'hidden' }}>
+                        <div style={{ padding: 8, borderBottom: '.5px solid var(--hair)', position: 'relative' }}>
+                            <Search size={12} style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: 'var(--ink-mute)' }} />
                             <input
                                 autoFocus
                                 value={search}
                                 onChange={e => setSearch(e.target.value)}
                                 placeholder="Search products…"
-                                className="w-full pl-8 pr-3 py-1.5 text-xs bg-[#F8F5EE] dark:bg-[#141C19] rounded-lg border border-[#E8E1D0] dark:border-[#2A3530] text-[#16201D] dark:text-[#EAE6DE] placeholder-[#B8B2A8] dark:placeholder-[#3A4A45] focus:outline-none focus:border-[#1F5B4A] dark:focus:border-[#3D9E7A]"
+                                className="tbl-input"
+                                style={{ paddingLeft: 28, fontSize: 12 }}
                             />
                         </div>
-                        <ul className="max-h-52 overflow-y-auto divide-y divide-[#F8F5EE] dark:divide-[#141C19]">
-                            {filtered.length === 0 && (
-                                <li className="px-4 py-3 text-xs text-[#6A746F] dark:text-[#4A5A55]">No products found.</li>
-                            )}
+                        <ul style={{ maxHeight: 200, overflowY: 'auto', listStyle: 'none', padding: 0, margin: 0 }}>
+                            {filtered.length === 0 && <li style={{ padding: '10px 14px', fontSize: 12, color: 'var(--ink-mute)' }}>No products found.</li>}
                             {filtered.map(p => (
-                                <li key={p.id}>
+                                <li key={p.id} style={{ borderTop: '.5px solid var(--hair)' }}>
                                     <button
                                         onClick={() => handleAssign(p.id)}
                                         disabled={assigning}
-                                        className="w-full flex items-center gap-3 px-4 py-2.5 text-left text-xs hover:bg-[#F8F5EE] dark:hover:bg-[#141C19] transition-colors disabled:opacity-50"
+                                        style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', fontSize: 12, color: 'var(--ink)', transition: 'background .1s' }}
+                                        onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-sunk)')}
+                                        onMouseLeave={e => (e.currentTarget.style.background = 'none')}
                                     >
-                                        <div className="w-8 h-8 rounded-md overflow-hidden bg-[#F2EDE0] dark:bg-[#1C2822] flex-shrink-0 flex items-center justify-center">
-                                            {p.featured_image
-                                                ? <img src={p.featured_image} alt="" className="w-full h-full object-cover" />
-                                                : <span className="text-[8px] text-[#B8B2A8] dark:text-[#3A4A45]">—</span>}
+                                        <div style={{ width: 28, height: 28, borderRadius: 2, overflow: 'hidden', background: 'var(--bg-sunk)', flexShrink: 0 }}>
+                                            {p.featured_image ? <img src={p.featured_image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : null}
                                         </div>
-                                        <span className="text-[#16201D] dark:text-[#EAE6DE] font-medium truncate">{p.name}</span>
+                                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
                                     </button>
                                 </li>
                             ))}
                         </ul>
                     </div>
                 )}
-
-                <button
-                    onClick={onDelete}
-                    disabled={deleting}
-                    className="w-full flex items-center gap-2.5 px-4 py-2.5 rounded-lg border border-red-200 dark:border-red-900/40 text-sm text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 hover:border-red-300 dark:hover:border-red-700 transition-all text-left disabled:opacity-40"
-                >
-                    <Trash2 className="w-4 h-4" />
-                    {deleting ? 'Deleting…' : 'Delete image'}
+                <button onClick={onDelete} disabled={deleting} className="btn" style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-start', background: 'transparent', color: 'rgb(185,28,28)', borderColor: 'rgba(185,28,28,.3)', opacity: deleting ? .4 : 1 }}>
+                    <Trash2 size={13} /> {deleting ? 'Deleting…' : 'Delete image'}
                 </button>
             </div>
-        </div>
-    );
-}
-
-function MetaRow({ label, value }: { label: string; value: string }) {
-    if (!value) return null;
-    return (
-        <div className="flex items-baseline justify-between gap-3">
-            <span className="text-[10px] uppercase tracking-wider text-[#6A746F] dark:text-[#4A5A55]">{label}</span>
-            <span className="text-xs text-[#16201D] dark:text-[#EAE6DE] text-right">{value}</span>
         </div>
     );
 }

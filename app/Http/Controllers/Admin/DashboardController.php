@@ -16,10 +16,12 @@ class DashboardController extends Controller
     public function index(): Response
     {
         $stats = [
-            'total_products' => Product::where('is_active', true)->count(),
-            'total_orders'   => Order::count(),
-            'pending_orders' => Order::where('status', 'pending')->count(),
-            'delivered_orders' => Order::where('status', 'delivered')->count(),
+            'total_products'    => Product::where('is_active', true)->count(),
+            'total_orders'      => Order::count(),
+            'pending_orders'    => Order::where('status', 'pending')->count(),
+            'processing_orders' => Order::where('status', 'processing')->count(),
+            'delivered_orders'  => Order::where('status', 'delivered')->count(),
+            'cancelled_orders'  => Order::where('status', 'cancelled')->count(),
         ];
 
         $deliveredOrders = Order::with('items')

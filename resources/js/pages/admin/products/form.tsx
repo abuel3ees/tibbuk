@@ -42,6 +42,8 @@ interface Product {
     allows_color: boolean;
     available_colors: string[];
     variants: StoredVariant[] | null;
+    meta_title?: string | null;
+    meta_description?: string | null;
 }
 
 interface MediaItem {
@@ -85,6 +87,8 @@ const defaultValues = {
     allows_color: false,
     available_colors: [] as string[],
     variants: [] as Variant[],
+    meta_title: '',
+    meta_description: '',
 };
 
 
@@ -146,6 +150,8 @@ export default function ProductForm({ product, categories, media }: Props) {
             allows_color: product.allows_color ?? false,
             available_colors: product.available_colors ?? [],
             variants: (product.variants ?? []).map(toFormVariant),
+            meta_title: product.meta_title ?? '',
+            meta_description: product.meta_description ?? '',
         } : defaultValues
     );
 
@@ -470,6 +476,31 @@ export default function ProductForm({ product, categories, media }: Props) {
                         onClearImage={clearVariantImage}
                         onBulkAdd={(newVariants) => setData('variants', [...data.variants, ...newVariants])}
                     />
+
+                    {/* SEO */}
+                    <div className="p-8 border-t border-stone-50">
+                        <h2 className="text-xs tracking-widest uppercase text-stone-400 mb-6">SEO</h2>
+                        <div className="space-y-4">
+                            <Field label="Meta Title" error={(errors as Record<string, string>).meta_title}>
+                                <input
+                                    value={(data as unknown as Record<string, string>).meta_title ?? ''}
+                                    onChange={e => setData('meta_title' as never, e.target.value as never)}
+                                    className={inputClass}
+                                    placeholder={data.name || 'Defaults to product name'}
+                                    maxLength={255}
+                                />
+                            </Field>
+                            <Field label="Meta Description" error={(errors as Record<string, string>).meta_description}>
+                                <textarea
+                                    value={(data as unknown as Record<string, string>).meta_description ?? ''}
+                                    onChange={e => setData('meta_description' as never, e.target.value as never)}
+                                    className={inputClass + ' resize-none'}
+                                    rows={3}
+                                    placeholder={data.excerpt || 'Defaults to product excerpt or description'}
+                                />
+                            </Field>
+                        </div>
+                    </div>
                 </div>
 
                 <div className="flex gap-4 mt-6">

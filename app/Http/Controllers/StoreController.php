@@ -16,12 +16,13 @@ class StoreController extends Controller
             ->orderBy('name')
             ->get([
                 'id', 'name', 'slug', 'price', 'sale_price', 'category',
-                'stock_status', 'featured_image', 'excerpt', 'description', 'variants',
+                'stock_status', 'quantity', 'featured_image', 'excerpt', 'description', 'variants',
                 'allows_engraving', 'engraving_price',
                 'allows_stitching', 'stitching_price',
                 'allows_sizes', 'available_sizes',
                 'allows_gender',
                 'allows_color', 'available_colors',
+                'meta_title', 'meta_description',
             ]);
 
         $categories = $products->pluck('category')->unique()->filter()->values();

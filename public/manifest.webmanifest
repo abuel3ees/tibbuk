@@ -1,0 +1,12 @@
+{
+  "name": "Tibbuk — طِبّك",
+  "short_name": "Tibbuk",
+  "description": "Medical equipment for Jordan's medical students",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0A0F0D",
+  "theme_color": "#1F5B4A",
+  "icons": [
+    { "src": "/apple-touch-icon.png", "sizes": "180x180", "type": "image/png" }
+  ]
+}

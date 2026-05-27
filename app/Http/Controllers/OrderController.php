@@ -103,8 +103,32 @@ class OrderController extends Controller
 
     public function confirmation(Order $order): Response
     {
+        $order->load('items');
+
         return Inertia::render('store/confirmation', [
-            'order' => $order->load('items'),
+            'order' => $order,
+        ]);
+    }
+
+    public function track(string $token): Response
+    {
+        $order = Order::where('tracking_token', $token)->with('items')->firstOrFail();
+
+        return Inertia::render('store/track', [
+            'order' => [
+                'id'               => $order->id,
+                'tracking_token'   => $order->tracking_token,
+                'status'           => $order->status,
+                'customer_name'    => $order->customer_name,
+                'delivery_address' => $order->delivery_address,
+                'total_amount'     => $order->total_amount,
+                'created_at'       => $order->created_at->toISOString(),
+                'items'            => $order->items->map(fn ($i) => [
+                    'product_name' => $i->product_name,
+                    'quantity'     => $i->quantity,
+                    'unit_price'   => $i->unit_price,
+                ]),
+            ],
         ]);
     }
 }

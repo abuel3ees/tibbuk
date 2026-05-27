@@ -1,7 +1,6 @@
 import '../../../css/tibbak.css';
 import { Head, router } from '@inertiajs/react';
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { initSmoothScroll, animateHero, animateSectionsOnScroll, animatePDP, animateCollectionSidebar, killAllAnimations } from '@/lib/animations';
 
 interface ProductVariant { value: string; price: string; stock: number | null; image: string | null }
 
@@ -13,6 +12,7 @@ interface Product {
     sale_price: string | null;
     category: string | null;
     stock_status: string;
+    quantity: number | null;
     featured_image: string | null;
     excerpt: string | null;
     description: string | null;
@@ -26,6 +26,8 @@ interface Product {
     allows_gender: boolean;
     allows_color: boolean;
     available_colors: string[] | null;
+    meta_title?: string | null;
+    meta_description?: string | null;
 }
 
 interface CartItem {
@@ -1040,6 +1042,28 @@ function CheckoutModal({ open, onClose, cart, setCart, products, lang }: {
 }
 
 // ---- TOAST ----
+function ShareButton({ lang, name, showToast }: { lang: Lang; name: string; showToast: (msg: string) => void }) {
+    function handleShare() {
+        const url = window.location.href;
+        if (navigator.share) {
+            navigator.share({ title: name, url }).catch(() => {});
+        } else {
+            navigator.clipboard.writeText(url).then(() => {
+                showToast(lang === 'en' ? 'Link copied!' : 'تمّ نسخ الرابط!');
+            }).catch(() => {});
+        }
+    }
+    return (
+        <button
+            onClick={handleShare}
+            style={{ marginTop: 10, display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--ink-mute)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit' }}
+        >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+            {lang === 'en' ? 'Share' : 'مشاركة'}
+        </button>
+    );
+}
+
 function Toast({ message, on }: { message: string; on: boolean }) {
     return (
         <div className={`toast${on ? ' on' : ''}`} role="status">
@@ -1513,12 +1537,13 @@ function CollectionPage({ lang, products, navigate, addToCart, initialCat }: {
 }
 
 // ---- PRODUCT PDP ----
-function ProductPage({ lang, productId, navigate, products, addToCart }: {
+function ProductPage({ lang, productId, navigate, products, addToCart, showToast }: {
     lang: Lang;
     productId: number;
     navigate: (r: string, pid?: number | null, cat?: string | null) => void;
     products: Product[];
     addToCart: (id: number, variant?: string | null, engraving?: string, stitching?: string, size?: string, gender?: string, color?: string) => void;
+    showToast: (msg: string) => void;
 }) {
     const t = COPY[lang].pdp;
     const cartT = COPY[lang].cart;
@@ -1531,12 +1556,21 @@ function ProductPage({ lang, productId, navigate, products, addToCart }: {
     const [selectedSize, setSelectedSize] = useState<string | null>(null);
     const [selectedGender, setSelectedGender] = useState<string | null>(null);
     const [selectedColor, setSelectedColor] = useState<string | null>(null);
+    const [zoomOpen, setZoomOpen] = useState(false);
 
     useEffect(() => {
         setQty(1); setSelectedVariant(null); setVariantError('');
         setEngravingText(''); setStitchingText('');
         setSelectedSize(null); setSelectedGender(null); setSelectedColor(null);
+        setZoomOpen(false);
     }, [productId]);
+
+    useEffect(() => {
+        if (!zoomOpen) return;
+        const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setZoomOpen(false); };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+    }, [zoomOpen]);
 
     // Preload all variant images immediately so switching variants feels instant
     useEffect(() => {
@@ -1595,12 +1629,37 @@ function ProductPage({ lang, productId, navigate, products, addToCart }: {
 
     return (
         <>
-            <section className="wrap pdp">
-                <div className="pdp__media-main">
+            {zoomOpen && displayImage && (
+            <div
+                onClick={() => setZoomOpen(false)}
+                style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.88)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, cursor: 'zoom-out' }}
+            >
+                <img
+                    src={displayImage}
+                    alt={product.name}
+                    onClick={e => e.stopPropagation()}
+                    style={{ maxWidth: '90vw', maxHeight: '90vh', objectFit: 'contain', borderRadius: 12, boxShadow: '0 32px 80px rgba(0,0,0,0.5)', cursor: 'default' }}
+                />
+                <button
+                    onClick={() => setZoomOpen(false)}
+                    style={{ position: 'absolute', top: 16, right: 16, width: 40, height: 40, borderRadius: '50%', background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.25)', color: '#fff', fontSize: 20, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    aria-label="Close"
+                >×</button>
+            </div>
+        )}
+        <section className="wrap pdp">
+                <div className="pdp__media-main" style={{ cursor: displayImage ? 'zoom-in' : undefined }} onClick={() => displayImage && setZoomOpen(true)}>
                     {displayImage ? (
                         <img src={displayImage} alt={product.name} loading="eager" fetchPriority="high" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
                     ) : (
                         <PHolder accent="default" label={product.category ?? 'product'} />
+                    )}
+                    {displayImage && (
+                        <div style={{ position: 'absolute', top: 10, right: 10, width: 32, height: 32, borderRadius: 8, background: 'rgba(0,0,0,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.7, pointerEvents: 'none' }}>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/>
+                            </svg>
+                        </div>
                     )}
                 </div>
                 <div className="pdp__side">
@@ -1790,6 +1849,12 @@ function ProductPage({ lang, productId, navigate, products, addToCart }: {
                         </div>
                     )}
 
+                    {inStock && product.quantity !== null && product.quantity > 0 && product.quantity <= 5 && (
+                        <div style={{ marginTop: 12, fontSize: 13, fontWeight: 600, color: '#b45309' }}>
+                            {lang === 'en' ? `Only ${product.quantity} left!` : `تبقّى ${product.quantity} فقط!`}
+                        </div>
+                    )}
+
                     <div style={{ marginTop: 20 }}>
                         <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 10, color: 'var(--ink)' }}>{t.qty}</div>
                         <div className="pdp__actions">
@@ -1808,6 +1873,7 @@ function ProductPage({ lang, productId, navigate, products, addToCart }: {
                                 {inStock && <span className="arrow"><ArrowIcon /></span>}
                             </button>
                         </div>
+                        <ShareButton lang={lang} name={product.name} showToast={showToast} />
                     </div>
 
                     {product.description && (
@@ -2057,7 +2123,6 @@ export default function StoreIndex({ products, hero_images, hero_content }: Prop
 
     useEffect(() => {
         document.documentElement.classList.add('tibbak');
-        initSmoothScroll();
         return () => document.documentElement.classList.remove('tibbak');
     }, []);
 
@@ -2076,22 +2141,6 @@ export default function StoreIndex({ products, hero_images, hero_content }: Prop
         localStorage.setItem('tbk_cart', JSON.stringify(cart));
     }, [cart]);
 
-    useEffect(() => {
-        killAllAnimations();
-        // Delay one frame so DOM is painted before animating
-        const id = requestAnimationFrame(() => {
-            if (route === 'home') {
-                animateHero('.tbk .hero');
-                animateSectionsOnScroll();
-            } else if (route === 'collection') {
-                animateCollectionSidebar();
-                animateSectionsOnScroll();
-            } else if (route === 'product') {
-                animatePDP();
-            }
-        });
-        return () => cancelAnimationFrame(id);
-    }, [route, productId]);
 
     function navigate(r: string, pid?: number | null, cat?: string | null) {
         setRoute(r);
@@ -2126,10 +2175,19 @@ export default function StoreIndex({ products, hero_images, hero_content }: Prop
     const cartCount = cart.reduce((s, l) => s + l.qty, 0);
     const [searchOpen, setSearchOpen] = useState(false);
 
+    const currentProduct = route === 'product' && productId !== null ? products.find(p => p.id === productId) : null;
+    const pageTitle = currentProduct
+        ? (currentProduct.meta_title ?? currentProduct.name) + ' — Tibbuk طِبّك'
+        : 'Tibbuk — طِبّك · Medical Equipment for Jordan\'s Med Students';
+    const pageDescription = currentProduct
+        ? (currentProduct.meta_description ?? currentProduct.excerpt ?? (currentProduct.description?.slice(0, 160) ?? ''))
+        : '';
+
     return (
         <div className="tbk">
             <Head>
-                <title>Tibbuk — طِبّك · Medical Equipment for Jordan's Med Students</title>
+                <title>{pageTitle}</title>
+                {pageDescription && <meta name="description" content={pageDescription} />}
                 <link rel="preconnect" href="https://fonts.googleapis.com" />
                 <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
                 <link
@@ -2143,7 +2201,7 @@ export default function StoreIndex({ products, hero_images, hero_content }: Prop
             <main id="main">
                 {route === 'home' && <HomePage lang={lang} navigate={navigate} products={products} addToCart={addToCart} heroImages={hero_images} heroContent={hero_content} />}
                 {route === 'collection' && <CollectionPage lang={lang} products={products} navigate={navigate} addToCart={addToCart} initialCat={initialCat} />}
-                {route === 'product' && productId !== null && <ProductPage lang={lang} productId={productId} navigate={navigate} products={products} addToCart={addToCart} />}
+                {route === 'product' && productId !== null && <ProductPage lang={lang} productId={productId} navigate={navigate} products={products} addToCart={addToCart} showToast={showToast} />}
                 {route === 'how' && <HowPage lang={lang} navigate={navigate} />}
             </main>
             <Footer lang={lang} navigate={navigate} />
@@ -2175,6 +2233,33 @@ export default function StoreIndex({ products, hero_images, hero_content }: Prop
                 />
             )}
             <Toast message={toast.msg} on={toast.on} />
+            {cartCount > 0 && !cartOpen && (
+                <div
+                    className="tbk-sticky-cart"
+                    style={{
+                        position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 900,
+                        display: 'none',
+                        background: 'var(--ink)', color: 'var(--paper)',
+                        padding: '14px 20px',
+                        alignItems: 'center', justifyContent: 'space-between',
+                    }}
+                    onClick={() => setCartOpen(true)}
+                >
+                    <span style={{ fontSize: 14, fontWeight: 600 }}>
+                        {lang === 'en' ? `View Cart (${cartCount})` : `عرض السلة (${cartCount})`}
+                    </span>
+                    <span style={{ fontSize: 14, fontFamily: 'var(--font-mono)', fontWeight: 600 }}>
+                        {fmt(cart.reduce((s, l) => {
+                            const p = products.find(x => x.id === l.id);
+                            if (!p) return s;
+                            const v = p.variants?.find(x => x.value === l.variant);
+                            const price = v ? Number(v.price) : (p.sale_price ? Number(p.sale_price) : Number(p.price));
+                            return s + price * l.qty;
+                        }, 0), COPY[lang].cart.currency)}
+                    </span>
+                </div>
+            )}
+            <style>{`@media (max-width: 768px) { .tbk-sticky-cart { display: flex !important; } }`}</style>
         </div>
     );
 }

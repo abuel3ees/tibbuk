@@ -5,10 +5,13 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Storage;
 
 class Product extends Model
 {
+    use SoftDeletes;
+
     protected $fillable = [
         'sku', 'name', 'slug', 'description', 'excerpt',
         'price', 'sale_price', 'cost_price', 'category',
@@ -17,6 +20,7 @@ class Product extends Model
         'allows_stitching', 'stitching_price',
         'allows_sizes', 'available_sizes',
         'allows_gender', 'allows_color', 'available_colors',
+        'meta_title', 'meta_description',
     ];
 
     protected $casts = [

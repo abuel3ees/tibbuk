@@ -24,6 +24,8 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureDefaults();
+        \App\Models\Product::observe(\App\Observers\ProductObserver::class);
+        \App\Models\Order::observe(\App\Observers\OrderObserver::class);
         \Illuminate\Support\Facades\Event::listen(
             \App\Events\OrderPlaced::class,
             \App\Listeners\SendOrderNotifications::class,

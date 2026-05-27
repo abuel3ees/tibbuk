@@ -1,6 +1,6 @@
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
-import { ArrowLeft, Trash2, MapPin, Phone, Mail, Facebook, FileText, Package, Download } from 'lucide-react';
+import { ArrowLeft, Trash2, MapPin, Phone, Mail, Facebook, FileText, Package, Download, StickyNote, ExternalLink, Clipboard, ArrowRight } from 'lucide-react';
 import AdminLayout from '@/layouts/admin-layout';
 
 interface OrderItem {
@@ -16,7 +16,8 @@ interface OrderItem {
     selected_color: string | null;
     product: { id: number; name: string } | null;
 }
-interface Order { id: number; customer_name: string; customer_phone: string; customer_email: string | null; customer_facebook: string | null; delivery_address: string; status: string; notes: string | null; total_amount: string; created_at: string; items: OrderItem[] }
+interface StatusLog { id: number; from_status: string | null; to_status: string; note: string | null; created_at: string }
+interface Order { id: number; customer_name: string; customer_phone: string; customer_email: string | null; customer_facebook: string | null; delivery_address: string; status: string; notes: string | null; admin_notes: string | null; total_amount: string; created_at: string; tracking_token: string; items: OrderItem[]; status_logs?: StatusLog[] }
 interface Props { order: Order }
 
 const STATUS_STYLES: Record<string, string> = {
@@ -151,6 +152,16 @@ function printReceipt(order: Order) {
 
 export default function OrderShow({ order }: Props) {
     const [updating, setUpdating] = useState(false);
+    const [copied, setCopied] = useState(false);
+    const notesForm = useForm({ admin_notes: order.admin_notes ?? '' });
+
+    function copyTrackingLink() {
+        const url = window.location.origin + '/track/' + order.tracking_token;
+        navigator.clipboard.writeText(url).then(() => {
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        }).catch(() => {});
+    }
 
     function updateStatus(status: string) {
         setUpdating(true);
@@ -160,6 +171,11 @@ export default function OrderShow({ order }: Props) {
     function deleteOrder() {
         if (!confirm(`Delete order #${String(order.id).padStart(5, '0')}? This cannot be undone.`)) return;
         router.delete(`/admin/orders/${order.id}`);
+    }
+
+    function saveNotes(e: React.FormEvent) {
+        e.preventDefault();
+        notesForm.patch(`/admin/orders/${order.id}/notes`, { preserveScroll: true });
     }
 
     const totalRevenue = order.items.reduce((s, i) => s + Number(i.unit_price) * i.quantity, 0);
@@ -185,6 +201,14 @@ export default function OrderShow({ order }: Props) {
                             className={`text-[10px] tracking-wider uppercase px-3.5 py-2.5 rounded-lg font-semibold cursor-pointer focus:outline-none border-0 transition-all disabled:opacity-50 ${STATUS_STYLES[order.status] ?? ''}`}>
                             {statuses.map(s => <option key={s} value={s}>{s}</option>)}
                         </select>
+                        <a href={`/track/${order.tracking_token}`} target="_blank" rel="noopener noreferrer"
+                            className="flex items-center gap-2 px-3.5 py-2.5 rounded-lg text-xs font-semibold border border-[#E8E1D0] dark:border-[#1C2822] text-[#6A746F] dark:text-[#9AA8A3] hover:text-[#1F5B4A] dark:hover:text-[#3D9E7A] hover:border-[#1F5B4A] dark:hover:border-[#3D9E7A] transition-all">
+                            <ExternalLink className="w-3.5 h-3.5" /> Tracking Link
+                        </a>
+                        <button onClick={copyTrackingLink}
+                            className="flex items-center gap-2 px-3.5 py-2.5 rounded-lg text-xs font-semibold border border-[#E8E1D0] dark:border-[#1C2822] text-[#6A746F] dark:text-[#9AA8A3] hover:text-[#1F5B4A] dark:hover:text-[#3D9E7A] hover:border-[#1F5B4A] dark:hover:border-[#3D9E7A] transition-all">
+                            <Clipboard className="w-3.5 h-3.5" /> {copied ? 'Copied!' : 'Copy link'}
+                        </button>
                         <button onClick={() => printReceipt(order)}
                             className="flex items-center gap-2 px-3.5 py-2.5 rounded-lg text-xs font-semibold border border-[#E8E1D0] dark:border-[#1C2822] text-[#16201D] dark:text-[#EAE6DE] hover:bg-[#F2EDE0] dark:hover:bg-[#141C19] transition-all">
                             <Download className="w-3.5 h-3.5" /> Export PDF
@@ -311,6 +335,58 @@ export default function OrderShow({ order }: Props) {
                     )}
                 </div>
             </div>
+            {/* Admin notes */}
+            <div className="mt-5 rounded-xl bg-white dark:bg-[#0E1512] border border-[#E8E1D0] dark:border-[#1C2822] p-6 shadow-sm">
+                <h2 className="text-[11px] tracking-widest uppercase text-[#6A746F] dark:text-[#4A5A55] font-semibold mb-4 flex items-center gap-2">
+                    <StickyNote className="w-3.5 h-3.5" /> Admin Notes
+                </h2>
+                <form onSubmit={saveNotes} className="space-y-3">
+                    <textarea
+                        value={notesForm.data.admin_notes}
+                        onChange={e => notesForm.setData('admin_notes', e.target.value)}
+                        rows={3}
+                        placeholder="Internal notes — not visible to customer…"
+                        className="w-full rounded-lg border border-[#D7CFBE] dark:border-[#2A3530] bg-[#F8F5EE] dark:bg-[#141C19] px-4 py-3 text-sm text-[#16201D] dark:text-[#EAE6DE] placeholder-[#B8B2A8] dark:placeholder-[#3A4A45] focus:outline-none focus:border-[#1F5B4A] dark:focus:border-[#3D9E7A] transition-colors resize-none"
+                    />
+                    <button type="submit" disabled={notesForm.processing}
+                        className="px-5 py-2 rounded-lg bg-[#1F5B4A] dark:bg-[#3D9E7A] text-white text-xs font-semibold hover:bg-[#2D7A65] dark:hover:bg-[#52B892] transition-colors disabled:opacity-40">
+                        {notesForm.processing ? 'Saving…' : 'Save Notes'}
+                    </button>
+                </form>
+            </div>
+            {/* Status Timeline */}
+            {order.status_logs && order.status_logs.length > 0 && (
+                <div className="mt-5 rounded-xl bg-white dark:bg-[#0E1512] border border-[#E8E1D0] dark:border-[#1C2822] p-6 shadow-sm">
+                    <h2 className="text-[11px] tracking-widest uppercase text-[#6A746F] dark:text-[#4A5A55] font-semibold mb-4">Status Timeline</h2>
+                    <div className="space-y-3">
+                        {order.status_logs.map((log, i) => (
+                            <div key={log.id} className="flex items-start gap-3">
+                                <div className="flex flex-col items-center">
+                                    <div className="w-2.5 h-2.5 rounded-full bg-[#1F5B4A] dark:bg-[#3D9E7A] mt-1 shrink-0" />
+                                    {i < order.status_logs!.length - 1 && <div className="w-px flex-1 bg-[#E8E1D0] dark:bg-[#1C2822] mt-1 min-h-[20px]" />}
+                                </div>
+                                <div className="pb-3">
+                                    <div className="flex items-center gap-2 text-xs">
+                                        {log.from_status ? (
+                                            <>
+                                                <span className="text-[#6A746F] dark:text-[#4A5A55] capitalize">{log.from_status}</span>
+                                                <ArrowRight className="w-3 h-3 text-[#B8B2A8] dark:text-[#3A4A45]" />
+                                                <span className="font-semibold text-[#16201D] dark:text-[#EAE6DE] capitalize">{log.to_status}</span>
+                                            </>
+                                        ) : (
+                                            <span className="font-semibold text-[#16201D] dark:text-[#EAE6DE] capitalize">Created as {log.to_status}</span>
+                                        )}
+                                    </div>
+                                    <p className="text-[11px] text-[#B8B2A8] dark:text-[#3A4A45] mt-0.5">
+                                        {new Date(log.created_at).toLocaleString('en-JO', { dateStyle: 'medium', timeStyle: 'short' })}
+                                    </p>
+                                    {log.note && <p className="text-xs text-[#6A746F] dark:text-[#4A5A55] mt-0.5 italic">{log.note}</p>}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
         </AdminLayout>
     );
 }

@@ -1,6 +1,6 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import { useState, useEffect, useRef } from 'react';
-import { Package, ShoppingBag, Clock, CheckCircle, TrendingUp, Bell, ImagePlus, X, ArrowRight, Sparkles } from 'lucide-react';
+import { Package, ShoppingBag, Clock, CheckCircle, TrendingUp, Bell, ImagePlus, X, ArrowRight, AlertTriangle, BarChart2 } from 'lucide-react';
 import AdminLayout from '@/layouts/admin-layout';
 
 interface Stats { total_products: number; total_orders: number; pending_orders: number; delivered_orders: number }
@@ -8,7 +8,16 @@ interface Financials { total_revenue: number; total_cost: number; net_profit: nu
 interface Order { id: number; customer_name: string; customer_phone: string; status: string; total_amount: string; created_at: string }
 interface Notification { id: string; data: { message: string; order_id: number; customer_name: string; total_amount: string }; created_at: string; read_at: string | null }
 interface HeroContent { pill_en: string | null; pill_ar: string | null; title_en: string | null; title_ar: string | null; lede_en: string | null; lede_ar: string | null }
-interface Props { stats: Stats; financials: Financials; recentOrders: Order[]; hero_images: string[]; hero_content: HeroContent }
+interface DayData { date: string; label: string; count: number }
+interface TopProduct { name: string; revenue: number; units: number }
+interface CategoryRevenue { category: string; revenue: number }
+interface LowStockProduct { id: number; name: string; quantity: number | null; stock_status: string }
+interface CustomerStats { total: number; repeat: number; rate: number }
+interface Props {
+    stats: Stats; financials: Financials; recentOrders: Order[]; hero_images: string[]; hero_content: HeroContent;
+    orders_per_day: DayData[]; top_products: TopProduct[]; revenue_by_category: CategoryRevenue[]; low_stock: LowStockProduct[];
+    customer_stats?: CustomerStats;
+}
 
 const STATUS_STYLES: Record<string, string> = {
     pending:    'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
@@ -17,7 +26,7 @@ const STATUS_STYLES: Record<string, string> = {
     cancelled:  'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400',
 };
 
-export default function Dashboard({ stats, financials, recentOrders, hero_images, hero_content }: Props) {
+export default function Dashboard({ stats, financials, recentOrders, hero_images, hero_content, orders_per_day, top_products, revenue_by_category, low_stock, customer_stats }: Props) {
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [notifOpen, setNotifOpen] = useState(false);
     const [unreadCount, setUnreadCount] = useState(0);
@@ -102,6 +111,15 @@ export default function Dashboard({ stats, financials, recentOrders, hero_images
                         <FinancialItem label="Cost"      value={financials.total_cost} dim />
                         <FinancialItem label="Net Profit" value={financials.net_profit} highlight />
                     </div>
+                    {customer_stats && (
+                        <div className="mt-5 pt-5 border-t border-[#F2EDE0] dark:border-[#1C2822] flex items-center justify-between">
+                            <span className="text-xs text-[#6A746F] dark:text-[#4A5A55]">Repeat Customers</span>
+                            <div className="flex items-center gap-2">
+                                <span className="text-sm font-semibold text-[#16201D] dark:text-[#EAE6DE]">{customer_stats.rate}%</span>
+                                <span className="text-[11px] text-[#B8B2A8] dark:text-[#3A4A45]">({customer_stats.repeat}/{customer_stats.total})</span>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -139,6 +157,95 @@ export default function Dashboard({ stats, financials, recentOrders, hero_images
                         </Link>
                     ))}
                 </div>
+            </div>
+
+            {/* Analytics */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-6">
+                {/* Orders per day chart */}
+                <div className="lg:col-span-2 rounded-xl bg-white dark:bg-[#0E1512] border border-[#E8E1D0] dark:border-[#1C2822] p-6 shadow-sm">
+                    <div className="flex items-center gap-2.5 mb-5">
+                        <BarChart2 className="w-4 h-4 text-[#1F5B4A] dark:text-[#3D9E7A]" />
+                        <h2 className="font-semibold text-[#16201D] dark:text-[#EAE6DE]">Orders — Last 14 Days</h2>
+                    </div>
+                    <OrdersChart data={orders_per_day} />
+                </div>
+
+                {/* Top products */}
+                <div className="rounded-xl bg-white dark:bg-[#0E1512] border border-[#E8E1D0] dark:border-[#1C2822] p-6 shadow-sm">
+                    <div className="flex items-center gap-2.5 mb-5">
+                        <TrendingUp className="w-4 h-4 text-[#1F5B4A] dark:text-[#3D9E7A]" />
+                        <h2 className="font-semibold text-[#16201D] dark:text-[#EAE6DE]">Top Products</h2>
+                    </div>
+                    {top_products.length === 0 ? (
+                        <p className="text-sm text-[#6A746F] dark:text-[#4A5A55] py-6 text-center">No delivered orders yet.</p>
+                    ) : (
+                        <div className="space-y-3">
+                            {top_products.map((p, i) => (
+                                <div key={i}>
+                                    <div className="flex items-baseline justify-between mb-1">
+                                        <p className="text-xs font-semibold text-[#16201D] dark:text-[#EAE6DE] truncate max-w-[75%]">{p.name}</p>
+                                        <p className="text-xs font-mono text-[#1F5B4A] dark:text-[#3D9E7A] shrink-0 ml-2">{p.revenue.toFixed(0)} JD</p>
+                                    </div>
+                                    <div className="w-full bg-[#F2EDE0] dark:bg-[#1C2822] h-1.5 rounded-full overflow-hidden">
+                                        <div className="bg-[#1F5B4A] dark:bg-[#3D9E7A] h-full rounded-full" style={{ width: `${Math.round((p.revenue / top_products[0].revenue) * 100)}%` }} />
+                                    </div>
+                                    <p className="text-[11px] text-[#6A746F] dark:text-[#4A5A55] mt-0.5">{p.units} units sold</p>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* Revenue by category + Low stock */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-6">
+                {/* Revenue by category */}
+                {revenue_by_category.length > 0 && (
+                    <div className="rounded-xl bg-white dark:bg-[#0E1512] border border-[#E8E1D0] dark:border-[#1C2822] p-6 shadow-sm">
+                        <h2 className="font-semibold text-[#16201D] dark:text-[#EAE6DE] mb-5">Revenue by Category</h2>
+                        <div className="space-y-3">
+                            {revenue_by_category.map((c, i) => {
+                                const max = revenue_by_category[0].revenue;
+                                return (
+                                    <div key={i}>
+                                        <div className="flex items-baseline justify-between mb-1">
+                                            <p className="text-xs font-semibold text-[#16201D] dark:text-[#EAE6DE]">{c.category}</p>
+                                            <p className="text-xs font-mono text-[#6A746F] dark:text-[#4A5A55]">{c.revenue.toFixed(0)} JD</p>
+                                        </div>
+                                        <div className="w-full bg-[#F2EDE0] dark:bg-[#1C2822] h-1.5 rounded-full overflow-hidden">
+                                            <div className="bg-[#1F5B4A]/50 dark:bg-[#3D9E7A]/50 h-full rounded-full" style={{ width: `${Math.round((c.revenue / max) * 100)}%` }} />
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
+
+                {/* Low stock */}
+                {low_stock.length > 0 && (
+                    <div className="rounded-xl bg-white dark:bg-[#0E1512] border border-amber-200/60 dark:border-amber-800/30 p-6 shadow-sm">
+                        <div className="flex items-center gap-2.5 mb-5">
+                            <AlertTriangle className="w-4 h-4 text-amber-500 dark:text-amber-400" />
+                            <h2 className="font-semibold text-[#16201D] dark:text-[#EAE6DE]">Low Stock</h2>
+                            <span className="ml-auto text-[10px] px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 font-semibold">{low_stock.length} products</span>
+                        </div>
+                        <div className="space-y-2">
+                            {low_stock.map(p => (
+                                <Link key={p.id} href={`/admin/products/${p.id}/edit`}
+                                    className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg hover:bg-[#F8F5EE] dark:hover:bg-[#141C19] transition-colors group">
+                                    <p className="text-sm font-semibold text-[#16201D] dark:text-[#EAE6DE] truncate">{p.name}</p>
+                                    <span className={`shrink-0 text-[10px] tracking-wider uppercase px-2.5 py-1 rounded-full font-semibold ${p.stock_status === 'out_of_stock' || p.quantity === 0 ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'}`}>
+                                        {p.stock_status === 'out_of_stock' || p.quantity === 0 ? 'Out of Stock' : `${p.quantity} left`}
+                                    </span>
+                                </Link>
+                            ))}
+                        </div>
+                        <Link href="/admin/products?filter[stock]=out" className="mt-3 flex items-center gap-1 text-xs text-[#6A746F] dark:text-[#4A5A55] hover:text-[#1F5B4A] dark:hover:text-[#3D9E7A] transition-colors">
+                            View all out-of-stock <ArrowRight className="w-3 h-3" />
+                        </Link>
+                    </div>
+                )}
             </div>
 
             {/* Site settings */}
@@ -181,6 +288,31 @@ export default function Dashboard({ stats, financials, recentOrders, hero_images
                 </div>
             )}
         </AdminLayout>
+    );
+}
+
+function OrdersChart({ data }: { data: DayData[] }) {
+    const max = Math.max(...data.map(d => d.count), 1);
+    // Show every other label to avoid crowding
+    return (
+        <div className="flex items-end gap-1.5 h-32">
+            {data.map((d, i) => (
+                <div key={d.date} className="flex-1 flex flex-col items-center gap-1 min-w-0">
+                    <div className="w-full flex flex-col justify-end" style={{ height: '96px' }}>
+                        <div
+                            className={`w-full rounded-t transition-all ${d.count > 0 ? 'bg-[#1F5B4A] dark:bg-[#3D9E7A]' : 'bg-[#F2EDE0] dark:bg-[#1C2822]'}`}
+                            style={{ height: `${Math.max((d.count / max) * 96, d.count > 0 ? 4 : 2)}px` }}
+                            title={`${d.label}: ${d.count} orders`}
+                        />
+                    </div>
+                    {i % 2 === 0 && (
+                        <p className="text-[9px] text-[#B8B2A8] dark:text-[#3A4A45] whitespace-nowrap overflow-hidden text-center" style={{ maxWidth: '100%', fontSize: '9px' }}>
+                            {d.label.split(' ')[1]}
+                        </p>
+                    )}
+                </div>
+            ))}
+        </div>
     );
 }
 

@@ -161,7 +161,7 @@ return [
     */
 
     'features' => [
-        Features::registration(),
+        // Features::registration(), — disabled, admin accounts created manually
         Features::resetPasswords(),
         Features::emailVerification(),
         Features::twoFactorAuthentication([

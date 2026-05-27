@@ -45,7 +45,7 @@ class OrderController extends Controller
     public function show(Order $order): Response
     {
         return Inertia::render('admin/orders/show', [
-            'order' => $order->load('items.product'),
+            'order' => $order->load('items.product', 'statusLogs'),
         ]);
     }
 
@@ -60,12 +60,52 @@ class OrderController extends Controller
         return back()->with('success', 'Order status updated.');
     }
 
+    public function updateAdminNotes(Request $request, Order $order): RedirectResponse
+    {
+        $validated = $request->validate([
+            'admin_notes' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        $order->update(['admin_notes' => $validated['admin_notes'] ?? null]);
+
+        return back()->with('success', 'Notes saved.');
+    }
+
+    public function bulkStatus(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'ids'    => ['required', 'array', 'min:1'],
+            'ids.*'  => ['integer', 'exists:orders,id'],
+            'status' => ['required', 'in:pending,processing,delivered,cancelled'],
+        ]);
+
+        Order::whereIn('id', $validated['ids'])->update(['status' => $validated['status']]);
+
+        return back()->with('success', count($validated['ids']) . ' orders updated to ' . $validated['status'] . '.');
+    }
+
     public function destroy(Order $order): RedirectResponse
     {
-        $order->items()->delete();
         $order->delete();
-
         return redirect()->route('admin.orders.index')->with('success', 'Order deleted.');
+    }
+
+    public function bulkDelete(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'ids'   => ['required', 'array'],
+            'ids.*' => ['integer', 'exists:orders,id'],
+        ]);
+
+        Order::whereIn('id', $validated['ids'])->delete();
+
+        return back()->with('success', count($validated['ids']) . ' orders deleted.');
+    }
+
+    public function restore(Order $order): RedirectResponse
+    {
+        $order->restore();
+        return redirect()->route('admin.orders.index')->with('success', 'Order restored.');
     }
 
     public function export(Request $request)

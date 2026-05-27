@@ -1,5 +1,5 @@
 import { Link, router, usePage } from '@inertiajs/react';
-import { LayoutDashboard, Package, ShoppingBag, TrendingUp, LogOut, Menu, X, Sun, Moon, Images, Bell } from 'lucide-react';
+import { LayoutDashboard, Package, ShoppingBag, TrendingUp, LogOut, Menu, X, Sun, Moon, Images, Bell, Keyboard } from 'lucide-react';
 import { useState, useEffect, useRef, createContext, useContext } from 'react';
 
 interface Props { children: React.ReactNode }
@@ -91,9 +91,36 @@ const nav = [
     { href: '/admin/media',      label: 'Media',     icon: Images },
 ];
 
+function ShortcutsModal({ onClose }: { onClose: () => void }) {
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={onClose}>
+            <div className="bg-[#FBF8F2] dark:bg-[#0E1512] rounded-2xl border border-[#E8E1D0] dark:border-[#1C2822] shadow-2xl p-8 w-80" onClick={e => e.stopPropagation()}>
+                <h2 className="text-sm font-semibold text-[#16201D] dark:text-[#EAE6DE] mb-5">Keyboard Shortcuts</h2>
+                <div className="space-y-3 text-sm">
+                    {[
+                        { keys: 'g → d', label: 'Go to Dashboard' },
+                        { keys: 'g → o', label: 'Go to Orders' },
+                        { keys: 'g → p', label: 'Go to Products' },
+                        { keys: '?', label: 'Show shortcuts' },
+                    ].map(s => (
+                        <div key={s.keys} className="flex items-center justify-between">
+                            <span className="text-[#6A746F] dark:text-[#4A5A55]">{s.label}</span>
+                            <kbd className="px-2 py-1 rounded-md bg-[#F2EDE0] dark:bg-[#1C2822] text-[#16201D] dark:text-[#EAE6DE] text-xs font-mono border border-[#D7CFBE] dark:border-[#2A3530]">{s.keys}</kbd>
+                        </div>
+                    ))}
+                </div>
+                <button onClick={onClose} className="mt-6 w-full px-4 py-2 rounded-lg bg-[#1F5B4A] dark:bg-[#3D9E7A] text-white text-xs font-semibold hover:bg-[#2D7A65] transition-colors">
+                    Close
+                </button>
+            </div>
+        </div>
+    );
+}
+
 export default function AdminLayout({ children }: Props) {
     const { url } = usePage();
     const [mobileOpen, setMobileOpen] = useState(false);
+    const [shortcutsOpen, setShortcutsOpen] = useState(false);
     const [dark, setDark] = useState<boolean>(() => {
         try { return localStorage.getItem('tbk_admin_dark') !== 'false'; } catch { return true; }
     });
@@ -102,8 +129,40 @@ export default function AdminLayout({ children }: Props) {
         try { localStorage.setItem('tbk_admin_dark', dark ? 'true' : 'false'); } catch {}
     }, [dark]);
 
+    useEffect(() => {
+        let pending: string | null = null;
+        let pendingTimer: ReturnType<typeof setTimeout> | null = null;
+
+        function handler(e: KeyboardEvent) {
+            if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement) return;
+
+            if (e.key === '?') {
+                setShortcutsOpen(o => !o);
+                return;
+            }
+
+            if (e.key === 'g' && !pending) {
+                pending = 'g';
+                pendingTimer = setTimeout(() => { pending = null; }, 1000);
+                return;
+            }
+
+            if (pending === 'g') {
+                if (pendingTimer) clearTimeout(pendingTimer);
+                pending = null;
+                if (e.key === 'o') router.visit('/admin/orders');
+                if (e.key === 'p') router.visit('/admin/products');
+                if (e.key === 'd') router.visit('/admin');
+            }
+        }
+
+        document.addEventListener('keydown', handler);
+        return () => { document.removeEventListener('keydown', handler); if (pendingTimer) clearTimeout(pendingTimer); };
+    }, []);
+
     return (
         <ThemeContext.Provider value={{ dark }}>
+            {shortcutsOpen && <ShortcutsModal onClose={() => setShortcutsOpen(false)} />}
             <div className={dark ? 'dark' : ''}>
                 <div className="min-h-screen flex bg-[#F2EDE0] dark:bg-[#0A100D] transition-colors duration-200">
                     {/* Sidebar */}
@@ -158,6 +217,13 @@ export default function AdminLayout({ children }: Props) {
                         {/* Footer */}
                         <div className="px-3 py-4 space-y-0.5 border-t border-[#D7CFBE] dark:border-[#1C2822]">
                             <NotificationBell />
+                            <button
+                                onClick={() => setShortcutsOpen(true)}
+                                className="flex items-center gap-3 px-4 py-2.5 rounded-md text-sm w-full text-left transition-all duration-150 text-[#6A746F] dark:text-[#4A5A55] hover:bg-[#E8E1D0] dark:hover:bg-[#1C2822] hover:text-[#16201D] dark:hover:text-[#EAE6DE]"
+                            >
+                                <Keyboard className="w-4 h-4" />
+                                Shortcuts
+                            </button>
                             <button
                                 onClick={() => setDark(d => !d)}
                                 className="flex items-center gap-3 px-4 py-2.5 rounded-md text-sm w-full text-left transition-all duration-150 text-[#6A746F] dark:text-[#4A5A55] hover:bg-[#E8E1D0] dark:hover:bg-[#1C2822] hover:text-[#16201D] dark:hover:text-[#EAE6DE]"

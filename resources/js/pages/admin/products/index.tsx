@@ -1,21 +1,74 @@
 import { Head, Link, router, useForm, Deferred } from '@inertiajs/react';
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { Plus, Pencil, Trash2, Search, X, Upload, Eye, EyeOff, Filter, Package, ImagePlus } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, X, Upload, Eye, EyeOff, Filter, Package, ImagePlus, Download, AlertTriangle, Copy } from 'lucide-react';
 import AdminLayout from '@/layouts/admin-layout';
 
-interface Product { id: number; name: string; sku: string | null; category: string | null; price: string; sale_price: string | null; stock_status: string; is_active: boolean; featured_image: string | null }
+interface Product { id: number; name: string; sku: string | null; category: string | null; price: string; sale_price: string | null; stock_status: string; quantity: number | null; is_active: boolean; featured_image: string | null }
 interface PaginatedProducts { data: Product[]; current_page: number; last_page: number; total: number; links: { url: string | null; label: string; active: boolean }[] }
-interface Props { products: PaginatedProducts; categories: string[]; filters: { search?: string; category?: string; stock?: string }; all_products?: Product[] }
+interface Props { products: PaginatedProducts; categories: string[]; filters: { search?: string; category?: string; stock?: string }; all_products?: Product[]; velocity?: Record<number, number> }
 
 const inputCls = 'w-full border border-[#D7CFBE] dark:border-[#2A3530] bg-white dark:bg-[#141C19] text-[#16201D] dark:text-[#EAE6DE] text-sm focus:outline-none focus:border-[#1F5B4A] dark:focus:border-[#3D9E7A] transition-colors placeholder-[#B8B2A8] dark:placeholder-[#3A4A45]';
 
-export default function ProductsIndex({ products, categories, filters, all_products }: Props) {
+interface UndoToast { id: number; name: string; timeoutId: ReturnType<typeof setTimeout> }
+
+function StockCell({ product }: { product: Product }) {
+    const [editing, setEditing] = useState(false);
+    const [value, setValue] = useState(String(product.quantity ?? ''));
+    const [localQty, setLocalQty] = useState(product.quantity);
+
+    function save() {
+        setEditing(false);
+        const qty = value === '' ? null : parseInt(value, 10);
+        if (isNaN(qty as number) && value !== '') return;
+        setLocalQty(qty);
+        fetch(`/admin/products/${product.id}/stock`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content ?? '' },
+            body: JSON.stringify({ quantity: qty, stock_status: product.stock_status }),
+        }).catch(() => {});
+    }
+
+    if (editing) {
+        return (
+            <input
+                type="number"
+                min="0"
+                value={value}
+                onChange={e => setValue(e.target.value)}
+                onBlur={save}
+                onKeyDown={e => { if (e.key === 'Enter') save(); if (e.key === 'Escape') setEditing(false); }}
+                autoFocus
+                style={{ width: 60, padding: '2px 6px', fontSize: 12, border: '1px solid #1F5B4A', borderRadius: 6, background: 'white', color: '#16201D' }}
+            />
+        );
+    }
+
+    const qty = localQty;
+    const status = product.stock_status;
+
+    if (status === 'in_stock' && qty !== null && qty <= 5) {
+        return (
+            <button onClick={() => setEditing(true)} className="inline-flex items-center gap-1.5 text-[10px] tracking-wider uppercase px-2.5 py-1 rounded-full font-semibold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 hover:opacity-80">
+                <AlertTriangle className="w-3 h-3" />
+                Low ({qty})
+            </button>
+        );
+    }
+    return (
+        <button onClick={() => setEditing(true)} className={`text-[10px] tracking-wider uppercase px-2.5 py-1 rounded-full font-semibold hover:opacity-80 ${status === 'in_stock' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'}`}>
+            {status === 'in_stock' ? 'In Stock' : 'Out of Stock'}
+        </button>
+    );
+}
+
+export default function ProductsIndex({ products, categories, filters, all_products, velocity }: Props) {
     const [search, setSearch] = useState(filters.search ?? '');
     const [category, setCategory] = useState(filters.category ?? '');
     const [stock, setStock] = useState(filters.stock ?? '');
-    const [deleting, setDeleting] = useState<number | null>(null);
     const [importOpen, setImportOpen] = useState(false);
     const [bulkImageOpen, setBulkImageOpen] = useState(false);
+    const [undoToasts, setUndoToasts] = useState<UndoToast[]>([]);
+    const [hiddenIds, setHiddenIds] = useState<Set<number>>(new Set());
     const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     function applyFilters(overrides: Record<string, string>) {
@@ -42,9 +95,26 @@ export default function ProductsIndex({ products, categories, filters, all_produ
     const hasFilters = search || category || stock;
 
     function handleDelete(product: Product) {
-        if (!confirm(`Delete "${product.name}"? This cannot be undone.`)) return;
-        setDeleting(product.id);
-        router.delete(`/admin/products/${product.id}`, { onFinish: () => setDeleting(null) });
+        const tid = setTimeout(() => {
+            router.delete(`/admin/products/${product.id}`, {
+                onSuccess: () => {
+                    setHiddenIds(prev => { const n = new Set(prev); n.delete(product.id); return n; });
+                    setUndoToasts(prev => prev.filter(t => t.id !== product.id));
+                },
+            });
+        }, 5000);
+        setHiddenIds(prev => new Set([...prev, product.id]));
+        setUndoToasts(prev => [...prev.filter(t => t.id !== product.id), { id: product.id, name: product.name, timeoutId: tid }]);
+    }
+
+    function handleUndo(toast: UndoToast) {
+        clearTimeout(toast.timeoutId);
+        setHiddenIds(prev => { const n = new Set(prev); n.delete(toast.id); return n; });
+        setUndoToasts(prev => prev.filter(t => t.id !== toast.id));
+    }
+
+    function handleDuplicate(product: Product) {
+        router.post(`/admin/products/${product.id}/duplicate`, {}, { preserveScroll: true });
     }
 
     function handleBulkVisibility(active: boolean) {
@@ -74,6 +144,10 @@ export default function ProductsIndex({ products, categories, filters, all_produ
                         className="flex items-center gap-2 px-3.5 py-2.5 rounded-lg border border-[#D7CFBE] dark:border-[#2A3530] bg-white dark:bg-[#141C19] text-[#6A746F] dark:text-[#9AA8A3] text-xs font-semibold hover:border-[#1F5B4A] dark:hover:border-[#3D9E7A] hover:text-[#1F5B4A] dark:hover:text-[#3D9E7A] transition-all shadow-sm">
                         <ImagePlus className="w-3.5 h-3.5" /> Bulk Images
                     </button>
+                    <a href="/admin/products/export"
+                        className="flex items-center gap-2 px-3.5 py-2.5 rounded-lg border border-[#D7CFBE] dark:border-[#2A3530] bg-white dark:bg-[#141C19] text-[#6A746F] dark:text-[#9AA8A3] text-xs font-semibold hover:border-[#1F5B4A] dark:hover:border-[#3D9E7A] hover:text-[#1F5B4A] dark:hover:text-[#3D9E7A] transition-all shadow-sm">
+                        <Download className="w-3.5 h-3.5" /> Export CSV
+                    </a>
                     <button onClick={() => setImportOpen(true)}
                         className="flex items-center gap-2 px-3.5 py-2.5 rounded-lg border border-[#D7CFBE] dark:border-[#2A3530] bg-white dark:bg-[#141C19] text-[#6A746F] dark:text-[#9AA8A3] text-xs font-semibold hover:border-[#1F5B4A] dark:hover:border-[#3D9E7A] hover:text-[#1F5B4A] dark:hover:text-[#3D9E7A] transition-all shadow-sm">
                         <Upload className="w-3.5 h-3.5" /> Import CSV
@@ -94,6 +168,18 @@ export default function ProductsIndex({ products, categories, filters, all_produ
                 }>
                     <BulkImageModal all_products={all_products ?? []} onClose={() => setBulkImageOpen(false)} />
                 </Deferred>
+            )}
+
+            {/* Undo toasts */}
+            {undoToasts.length > 0 && (
+                <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2">
+                    {undoToasts.map(t => (
+                        <div key={t.id} className="flex items-center gap-3 px-5 py-3 rounded-xl bg-[#16201D] dark:bg-[#EAE6DE] text-white dark:text-[#16201D] shadow-xl text-sm">
+                            <span>Deleted &ldquo;{t.name.slice(0, 30)}{t.name.length > 30 ? '…' : ''}&rdquo;</span>
+                            <button onClick={() => handleUndo(t)} className="font-semibold underline text-[#3D9E7A] dark:text-[#1F5B4A] ml-2">Undo</button>
+                        </div>
+                    ))}
+                </div>
             )}
 
             {/* Filters */}
@@ -142,7 +228,7 @@ export default function ProductsIndex({ products, categories, filters, all_produ
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-[#F8F5EE] dark:divide-[#141C19]">
-                        {products.data.map(product => (
+                        {products.data.filter(p => !hiddenIds.has(p.id)).map(product => (
                             <tr key={product.id} className="hover:bg-[#F8F5EE] dark:hover:bg-[#141C19] transition-colors group">
                                 <td className="px-6 py-4">
                                     <div className="flex items-center gap-3">
@@ -154,6 +240,9 @@ export default function ProductsIndex({ products, categories, filters, all_produ
                                         <div>
                                             <p className="font-semibold text-[#16201D] dark:text-[#EAE6DE]">{product.name}</p>
                                             {product.sku && <p className="text-[11px] text-[#6A746F] dark:text-[#4A5A55] mt-0.5 font-mono">{product.sku}</p>}
+                                            {velocity && velocity[product.id] > 0 && (
+                                                <p className="text-[11px] text-[#6A746F] dark:text-[#4A5A55] mt-0.5">{velocity[product.id]}/mo</p>
+                                            )}
                                         </div>
                                     </div>
                                 </td>
@@ -169,9 +258,7 @@ export default function ProductsIndex({ products, categories, filters, all_produ
                                     )}
                                 </td>
                                 <td className="px-6 py-4 hidden sm:table-cell">
-                                    <span className={`text-[10px] tracking-wider uppercase px-2.5 py-1 rounded-full font-semibold ${product.stock_status === 'in_stock' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'}`}>
-                                        {product.stock_status === 'in_stock' ? 'In Stock' : 'Out of Stock'}
-                                    </span>
+                                    <StockCell product={product} />
                                 </td>
                                 <td className="px-6 py-4 hidden lg:table-cell">
                                     <span className={`text-[10px] tracking-wider uppercase px-2.5 py-1 rounded-full font-semibold ${product.is_active ? 'bg-[#1F5B4A]/10 text-[#1F5B4A] dark:bg-[#3D9E7A]/15 dark:text-[#3D9E7A]' : 'bg-[#F2EDE0] text-[#6A746F] dark:bg-[#1C2822] dark:text-[#4A5A55]'}`}>
@@ -180,12 +267,17 @@ export default function ProductsIndex({ products, categories, filters, all_produ
                                 </td>
                                 <td className="px-6 py-4">
                                     <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <button onClick={() => handleDuplicate(product)}
+                                            className="w-8 h-8 rounded-lg flex items-center justify-center text-[#6A746F] dark:text-[#4A5A55] hover:bg-[#1F5B4A]/10 dark:hover:bg-[#3D9E7A]/15 hover:text-[#1F5B4A] dark:hover:text-[#3D9E7A] transition-all"
+                                            title="Duplicate">
+                                            <Copy className="w-3.5 h-3.5" />
+                                        </button>
                                         <Link href={`/admin/products/${product.id}/edit`}
                                             className="w-8 h-8 rounded-lg flex items-center justify-center text-[#6A746F] dark:text-[#4A5A55] hover:bg-[#1F5B4A]/10 dark:hover:bg-[#3D9E7A]/15 hover:text-[#1F5B4A] dark:hover:text-[#3D9E7A] transition-all">
                                             <Pencil className="w-3.5 h-3.5" />
                                         </Link>
-                                        <button onClick={() => handleDelete(product)} disabled={deleting === product.id}
-                                            className="w-8 h-8 rounded-lg flex items-center justify-center text-[#6A746F] dark:text-[#4A5A55] hover:bg-red-50 dark:hover:bg-red-950/30 hover:text-red-500 dark:hover:text-red-400 transition-all disabled:opacity-30">
+                                        <button onClick={() => handleDelete(product)}
+                                            className="w-8 h-8 rounded-lg flex items-center justify-center text-[#6A746F] dark:text-[#4A5A55] hover:bg-red-50 dark:hover:bg-red-950/30 hover:text-red-500 dark:hover:text-red-400 transition-all">
                                             <Trash2 className="w-3.5 h-3.5" />
                                         </button>
                                     </div>
@@ -359,21 +451,18 @@ function BulkImageRow({ product, preview, current, hasNew, onPick, onRemove }: {
 
     return (
         <div className={`flex items-center gap-4 p-3 rounded-xl border transition-all ${hasNew ? 'border-[#1F5B4A] dark:border-[#3D9E7A] bg-[#1F5B4A]/5 dark:bg-[#3D9E7A]/10' : 'border-[#E8E1D0] dark:border-[#1C2822] hover:border-[#D7CFBE] dark:hover:border-[#2A3530]'}`}>
-            {/* Thumbnail */}
             <div className="w-12 h-12 rounded-lg overflow-hidden bg-[#F2EDE0] dark:bg-[#1C2822] flex-shrink-0 flex items-center justify-center">
                 {displayImage
                     ? <img src={displayImage} alt="" className="w-full h-full object-cover" />
                     : <Package className="w-5 h-5 text-[#B8B2A8] dark:text-[#3A4A45]" />}
             </div>
 
-            {/* Name */}
             <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-[#16201D] dark:text-[#EAE6DE] truncate">{product.name}</p>
                 {product.sku && <p className="text-[11px] text-[#6A746F] dark:text-[#4A5A55] font-mono">{product.sku}</p>}
                 {hasNew && <p className="text-[11px] text-[#1F5B4A] dark:text-[#3D9E7A] mt-0.5">New image selected</p>}
             </div>
 
-            {/* Drop / pick zone */}
             <div
                 className={`flex items-center gap-2 px-3 py-2 rounded-lg border-2 border-dashed cursor-pointer transition-all text-xs ${dragOver ? 'border-[#1F5B4A] dark:border-[#3D9E7A] bg-[#1F5B4A]/10' : 'border-[#D7CFBE] dark:border-[#2A3530] hover:border-[#1F5B4A] dark:hover:border-[#3D9E7A]'} text-[#6A746F] dark:text-[#4A5A55]`}
                 onClick={() => inputRef.current?.click()}

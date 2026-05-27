@@ -16,6 +16,7 @@ interface OrderItem {
 
 interface Order {
     id: number;
+    tracking_token: string;
     customer_name: string;
     customer_phone: string;
     customer_email: string | null;
@@ -147,10 +148,14 @@ export default function Confirmation({ order }: Props) {
                     );
                 })()}
 
-                <div style={{ textAlign: 'center', marginTop: 40 }}>
+                <div style={{ textAlign: 'center', marginTop: 40, display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'center' }}>
                     <Link href="/" className="btn btn--lg">
                         Continue Shopping
                     </Link>
+                    <a href={`/track/${order.tracking_token}`} target="_blank" rel="noopener noreferrer"
+                        style={{ fontSize: 13, color: 'var(--ink-mute)', textDecoration: 'underline', cursor: 'pointer' }}>
+                        Track your order →
+                    </a>
                 </div>
             </div>
         </div>

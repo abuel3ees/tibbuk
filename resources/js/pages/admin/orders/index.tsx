@@ -1,6 +1,6 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Trash2, ShoppingBag, ArrowRight, Search, X, Filter, Download } from 'lucide-react';
+import { Trash2, ShoppingBag, ArrowRight, Search, X, Filter, Download, CheckSquare } from 'lucide-react';
 import AdminLayout from '@/layouts/admin-layout';
 
 interface OrderItem { id: number; product_name: string; quantity: number; unit_price: string }
@@ -31,7 +31,13 @@ export default function OrdersIndex({ orders, filters }: Props) {
     const [updating, setUpdating] = useState<number | null>(null);
     const [search, setSearch] = useState(filters.search ?? '');
     const [status, setStatus] = useState(filters.status ?? '');
+    const [selected, setSelected] = useState<Set<number>>(new Set());
+    const [bulkStatus, setBulkStatus] = useState('processing');
+    const [bulking, setBulking] = useState(false);
     const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    // Clear selection on page change
+    useEffect(() => { setSelected(new Set()); }, [orders.current_page]);
 
     function applyFilters(overrides: Record<string, string>) {
         const s = overrides.search !== undefined ? overrides.search : search;
@@ -54,14 +60,53 @@ export default function OrdersIndex({ orders, filters }: Props) {
 
     const hasFilters = search || status;
 
-    function updateStatus(orderId: number, status: string) {
+    function updateStatus(orderId: number, newStatus: string) {
         setUpdating(orderId);
-        router.patch(`/admin/orders/${orderId}/status`, { status }, { onFinish: () => setUpdating(null), preserveScroll: true });
+        router.patch(`/admin/orders/${orderId}/status`, { status: newStatus }, { onFinish: () => setUpdating(null), preserveScroll: true });
     }
 
     function deleteOrder(orderId: number) {
         if (!confirm(`Delete order #${String(orderId).padStart(5, '0')}? This cannot be undone.`)) return;
         router.delete(`/admin/orders/${orderId}`, { preserveScroll: true });
+    }
+
+    const allIds = orders.data.map(o => o.id);
+    const allSelected = allIds.length > 0 && allIds.every(id => selected.has(id));
+    const someSelected = selected.size > 0;
+
+    function toggleAll() {
+        if (allSelected) {
+            setSelected(new Set());
+        } else {
+            setSelected(new Set(allIds));
+        }
+    }
+
+    function toggleOne(id: number) {
+        const next = new Set(selected);
+        if (next.has(id)) next.delete(id); else next.add(id);
+        setSelected(next);
+    }
+
+    function applyBulkStatus() {
+        if (!someSelected) return;
+        if (!confirm(`Set ${selected.size} order${selected.size !== 1 ? 's' : ''} to "${bulkStatus}"?`)) return;
+        setBulking(true);
+        router.post('/admin/orders/bulk-status', { ids: [...selected], status: bulkStatus }, {
+            preserveScroll: true,
+            onFinish: () => { setBulking(false); setSelected(new Set()); },
+        });
+    }
+
+    function applyBulkDelete() {
+        if (!someSelected) return;
+        if (!confirm(`Delete ${selected.size} order${selected.size !== 1 ? 's' : ''}? This cannot be undone.`)) return;
+        setBulking(true);
+        router.delete('/admin/orders/bulk', {
+            data: { ids: [...selected] },
+            preserveScroll: true,
+            onFinish: () => { setBulking(false); setSelected(new Set()); },
+        });
     }
 
     return (
@@ -82,7 +127,7 @@ export default function OrdersIndex({ orders, filters }: Props) {
             </div>
 
             {/* Filters */}
-            <div className="flex flex-wrap gap-2.5 mb-5">
+            <div className="flex flex-wrap gap-2.5 mb-4">
                 <div className="relative flex-1 min-w-52">
                     <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#B8B2A8] dark:text-[#3A4A45]" />
                     <input value={search} onChange={e => handleSearchChange(e.target.value)}
@@ -107,42 +152,77 @@ export default function OrdersIndex({ orders, filters }: Props) {
                 )}
             </div>
 
+            {/* Bulk action bar */}
+            {someSelected && (
+                <div className="flex items-center gap-3 mb-4 px-4 py-3 rounded-xl bg-[#1F5B4A]/10 dark:bg-[#3D9E7A]/10 border border-[#1F5B4A]/30 dark:border-[#3D9E7A]/30">
+                    <CheckSquare className="w-4 h-4 text-[#1F5B4A] dark:text-[#3D9E7A] shrink-0" />
+                    <span className="text-sm font-semibold text-[#1F5B4A] dark:text-[#3D9E7A]">{selected.size} selected</span>
+                    <div className="flex items-center gap-2 ml-auto">
+                        <span className="text-xs text-[#6A746F] dark:text-[#4A5A55]">Set to</span>
+                        <select value={bulkStatus} onChange={e => setBulkStatus(e.target.value)}
+                            className="text-xs border border-[#D7CFBE] dark:border-[#2A3530] bg-white dark:bg-[#141C19] text-[#16201D] dark:text-[#EAE6DE] rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-[#1F5B4A] dark:focus:border-[#3D9E7A]">
+                            {statuses.map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
+                        </select>
+                        <button onClick={applyBulkStatus} disabled={bulking}
+                            className="px-4 py-1.5 rounded-lg bg-[#1F5B4A] dark:bg-[#3D9E7A] text-white text-xs font-semibold hover:bg-[#2D7A65] dark:hover:bg-[#52B892] transition-colors disabled:opacity-40">
+                            {bulking ? 'Updating…' : 'Apply'}
+                        </button>
+                        <button onClick={applyBulkDelete} disabled={bulking}
+                            className="px-4 py-1.5 rounded-lg bg-red-500 dark:bg-red-600 text-white text-xs font-semibold hover:bg-red-600 dark:hover:bg-red-700 transition-colors disabled:opacity-40">
+                            Delete selected
+                        </button>
+                        <button onClick={() => setSelected(new Set())}
+                            className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-[#D7CFBE] dark:border-[#2A3530] text-[#6A746F] dark:text-[#4A5A55] hover:border-[#6A746F] hover:text-[#16201D] dark:hover:text-[#EAE6DE] transition-all">
+                            Clear
+                        </button>
+                    </div>
+                </div>
+            )}
+
             <div className="rounded-xl bg-white dark:bg-[#0E1512] border border-[#E8E1D0] dark:border-[#1C2822] overflow-hidden shadow-sm">
                 <table className="w-full text-sm">
                     <thead>
                         <tr className="border-b border-[#F2EDE0] dark:border-[#1C2822]">
-                            <th className="text-left px-6 py-3.5 text-[11px] tracking-widest uppercase text-[#6A746F] dark:text-[#4A5A55] font-semibold">Order</th>
-                            <th className="text-left px-6 py-3.5 text-[11px] tracking-widest uppercase text-[#6A746F] dark:text-[#4A5A55] font-semibold">Customer</th>
-                            <th className="text-left px-6 py-3.5 text-[11px] tracking-widest uppercase text-[#6A746F] dark:text-[#4A5A55] font-semibold hidden md:table-cell">Items</th>
-                            <th className="text-left px-6 py-3.5 text-[11px] tracking-widest uppercase text-[#6A746F] dark:text-[#4A5A55] font-semibold">Total</th>
-                            <th className="text-left px-6 py-3.5 text-[11px] tracking-widest uppercase text-[#6A746F] dark:text-[#4A5A55] font-semibold">Status</th>
-                            <th className="px-6 py-3.5" />
+                            <th className="px-4 py-3.5 w-10">
+                                <input type="checkbox" checked={allSelected} onChange={toggleAll}
+                                    className="w-4 h-4 rounded accent-[#1F5B4A] cursor-pointer" />
+                            </th>
+                            <th className="text-left px-4 py-3.5 text-[11px] tracking-widest uppercase text-[#6A746F] dark:text-[#4A5A55] font-semibold">Order</th>
+                            <th className="text-left px-4 py-3.5 text-[11px] tracking-widest uppercase text-[#6A746F] dark:text-[#4A5A55] font-semibold">Customer</th>
+                            <th className="text-left px-4 py-3.5 text-[11px] tracking-widest uppercase text-[#6A746F] dark:text-[#4A5A55] font-semibold hidden md:table-cell">Items</th>
+                            <th className="text-left px-4 py-3.5 text-[11px] tracking-widest uppercase text-[#6A746F] dark:text-[#4A5A55] font-semibold">Total</th>
+                            <th className="text-left px-4 py-3.5 text-[11px] tracking-widest uppercase text-[#6A746F] dark:text-[#4A5A55] font-semibold">Status</th>
+                            <th className="px-4 py-3.5" />
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-[#F8F5EE] dark:divide-[#141C19]">
                         {orders.data.map(order => (
-                            <tr key={order.id} className="hover:bg-[#F8F5EE] dark:hover:bg-[#141C19] transition-colors group">
-                                <td className="px-6 py-4">
+                            <tr key={order.id} className={`transition-colors group ${selected.has(order.id) ? 'bg-[#1F5B4A]/5 dark:bg-[#3D9E7A]/5' : 'hover:bg-[#F8F5EE] dark:hover:bg-[#141C19]'}`}>
+                                <td className="px-4 py-4">
+                                    <input type="checkbox" checked={selected.has(order.id)} onChange={() => toggleOne(order.id)}
+                                        className="w-4 h-4 rounded accent-[#1F5B4A] cursor-pointer" />
+                                </td>
+                                <td className="px-4 py-4">
                                     <p className="font-semibold text-[#16201D] dark:text-[#EAE6DE] font-mono">#{String(order.id).padStart(5, '0')}</p>
                                     <p className="text-[11px] text-[#6A746F] dark:text-[#4A5A55] mt-0.5">{new Date(order.created_at).toLocaleDateString('en-JO')}</p>
                                 </td>
-                                <td className="px-6 py-4">
+                                <td className="px-4 py-4">
                                     <p className="font-semibold text-[#16201D] dark:text-[#EAE6DE]">{order.customer_name}</p>
                                     <p className="text-[11px] text-[#6A746F] dark:text-[#4A5A55]">{order.customer_phone}</p>
                                 </td>
-                                <td className="px-6 py-4 hidden md:table-cell text-[#6A746F] dark:text-[#4A5A55] text-xs">
+                                <td className="px-4 py-4 hidden md:table-cell text-[#6A746F] dark:text-[#4A5A55] text-xs">
                                     {order.items.map(i => `${i.product_name} ×${i.quantity}`).join(', ').slice(0, 55)}{order.items.length > 1 ? '…' : ''}
                                 </td>
-                                <td className="px-6 py-4 font-semibold text-[#16201D] dark:text-[#EAE6DE] font-mono tabular-nums">
+                                <td className="px-4 py-4 font-semibold text-[#16201D] dark:text-[#EAE6DE] font-mono tabular-nums">
                                     {Number(order.total_amount).toFixed(2)} <span className="text-[11px] font-normal text-[#6A746F] dark:text-[#4A5A55]">JOD</span>
                                 </td>
-                                <td className="px-6 py-4">
+                                <td className="px-4 py-4">
                                     <select value={order.status} onChange={e => updateStatus(order.id, e.target.value)} disabled={updating === order.id}
                                         className={`text-[10px] tracking-wider uppercase px-2.5 py-1.5 rounded-full font-semibold cursor-pointer focus:outline-none border-0 transition-all disabled:opacity-50 ${STATUS_STYLES[order.status] ?? 'bg-stone-100 text-stone-500 dark:bg-stone-800 dark:text-stone-400'}`}>
                                         {statuses.map(s => <option key={s} value={s}>{s}</option>)}
                                     </select>
                                 </td>
-                                <td className="px-6 py-4">
+                                <td className="px-4 py-4">
                                     <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                         <Link href={`/admin/orders/${order.id}`}
                                             className="w-8 h-8 rounded-lg flex items-center justify-center text-[#6A746F] dark:text-[#4A5A55] hover:bg-[#1F5B4A]/10 dark:hover:bg-[#3D9E7A]/15 hover:text-[#1F5B4A] dark:hover:text-[#3D9E7A] transition-all">
@@ -158,7 +238,7 @@ export default function OrdersIndex({ orders, filters }: Props) {
                         ))}
                         {orders.data.length === 0 && (
                             <tr>
-                                <td colSpan={6} className="px-6 py-20 text-center">
+                                <td colSpan={7} className="px-6 py-20 text-center">
                                     <ShoppingBag className="w-8 h-8 mx-auto mb-3 text-[#D7CFBE] dark:text-[#2A3530]" />
                                     <p className="text-sm text-[#6A746F] dark:text-[#4A5A55]">No orders yet.</p>
                                 </td>

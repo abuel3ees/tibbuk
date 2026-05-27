@@ -4,9 +4,12 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Media;
+use App\Models\OrderItem;
 use App\Models\Product;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
@@ -47,6 +50,12 @@ class ProductController extends Controller
             'all_products' => Inertia::defer(fn () =>
                 Product::orderBy('category')->orderBy('name')
                     ->get(['id', 'name', 'sku', 'category', 'featured_image'])
+            ),
+            'velocity' => Inertia::defer(fn () =>
+                OrderItem::select('product_id', DB::raw('SUM(quantity) as sold'))
+                    ->whereHas('order', fn ($q) => $q->where('created_at', '>=', now()->subDays(30)))
+                    ->groupBy('product_id')
+                    ->pluck('sold', 'product_id')
             ),
         ]);
     }
@@ -342,6 +351,8 @@ class ProductController extends Controller
             'variants.*.stock'         => ['nullable', 'integer', 'min:0'],
             'variants.*.image'         => ['nullable', 'image', 'max:20480'],
             'variants.*.current_image' => ['nullable', 'string'],
+            'meta_title'       => ['nullable', 'string', 'max:255'],
+            'meta_description' => ['nullable', 'string'],
         ]);
     }
 
@@ -379,6 +390,78 @@ class ProductController extends Controller
             return $parsed ? ltrim($parsed, '/') : $path;
         }
         return $path;
+    }
+
+    public function duplicate(Product $product): RedirectResponse
+    {
+        $data = $product->toArray();
+        unset($data['id'], $data['slug'], $data['created_at'], $data['updated_at'], $data['deleted_at']);
+        $data['name'] = 'Copy of ' . $product->name;
+        $data['slug'] = $this->uniqueSlug($data['name']);
+        $data['is_active'] = false;
+
+        $rawVariants = $product->getRawOriginal('variants');
+        $data['variants'] = $rawVariants;
+
+        $newProduct = Product::create($data);
+
+        return redirect()->route('admin.products.edit', $newProduct)
+            ->with('success', 'Product duplicated. Edit your copy below.');
+    }
+
+    public function updateStock(Request $request, Product $product): JsonResponse
+    {
+        $validated = $request->validate([
+            'quantity'     => ['nullable', 'integer', 'min:0'],
+            'stock_status' => ['required', 'in:in_stock,out_of_stock'],
+        ]);
+
+        $product->update($validated);
+
+        return response()->json([
+            'ok'           => true,
+            'quantity'     => $product->quantity,
+            'stock_status' => $product->stock_status,
+        ]);
+    }
+
+    public function restore(Product $product): RedirectResponse
+    {
+        $product->restore();
+        return redirect()->route('admin.products.index')->with('success', 'Product restored.');
+    }
+
+    public function exportCsv()
+    {
+        $products = Product::orderBy('category')->orderBy('name')->get();
+
+        $filename = 'products-' . now()->format('Y-m-d') . '.csv';
+        $headers = [
+            'Content-Type'        => 'text/csv',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+        ];
+
+        $callback = function () use ($products) {
+            $fh = fopen('php://output', 'w');
+            fputcsv($fh, ['SKU', 'Name', 'Category', 'Price', 'Sale Price', 'Cost Price', 'Stock Status', 'Quantity', 'Active', 'Description']);
+            foreach ($products as $p) {
+                fputcsv($fh, [
+                    $p->sku ?? '',
+                    $p->name,
+                    $p->category ?? '',
+                    $p->price,
+                    $p->sale_price ?? '',
+                    $p->cost_price ?? '',
+                    $p->stock_status,
+                    $p->quantity ?? '',
+                    $p->is_active ? 'yes' : 'no',
+                    $p->description ?? '',
+                ]);
+            }
+            fclose($fh);
+        };
+
+        return response()->stream($callback, 200, $headers);
     }
 
     private function uniqueSlug(string $name, ?int $excludeId = null): string

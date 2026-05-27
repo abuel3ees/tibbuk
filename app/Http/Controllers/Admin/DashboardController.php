@@ -98,7 +98,7 @@ class DashboardController extends Controller
 
         $repeatCustomers = Order::select('customer_phone', DB::raw('COUNT(*) as cnt'))
             ->groupBy('customer_phone')
-            ->having('cnt', '>', 1)
+            ->havingRaw('COUNT(*) > 1')
             ->count();
         $totalCustomers = Order::distinct('customer_phone')->count('customer_phone');
 

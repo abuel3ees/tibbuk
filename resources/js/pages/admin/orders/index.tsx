@@ -1,6 +1,6 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Trash2, ArrowRight, Search, X, Download } from 'lucide-react';
+import { Trash2, ArrowRight, Search, X, Download, RotateCcw } from 'lucide-react';
 import LedgerLayout from '@/layouts/ledger-layout';
 
 interface OrderItem { id: number; product_name: string; quantity: number; unit_price: string }
@@ -102,9 +102,27 @@ export default function OrdersIndex({ orders, filters }: Props) {
             title={<>The <em>Orders</em></>}
             eyebrow={`${orders.total} total`}
             actions={
-                <a href={`/admin/orders/export${buildExportQuery(search, status)}`} className="btn btn-ghost" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <Download size={13} /> Export XLSX
-                </a>
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                    <a href={`/admin/orders/export${buildExportQuery(search, status)}`} className="btn btn-ghost" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <Download size={13} /> Export XLSX
+                    </a>
+                    <button
+                        className="btn btn-ghost"
+                        style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+                        onClick={() => {
+                            if (!confirm('Reset order IDs to start from 1? This only works if ALL orders have been deleted first.')) return;
+                            fetch('/admin/orders/reset-sequence', {
+                                method: 'POST',
+                                headers: { 'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content ?? '' },
+                            }).then(r => r.json()).then(d => {
+                                if (d.ok) alert('Order ID sequence reset to 1.');
+                                else alert(d.error ?? 'Failed.');
+                            });
+                        }}
+                    >
+                        <RotateCcw size={13} /> Reset IDs
+                    </button>
+                </div>
             }
             counts={{ orders: orders.total }}
         >

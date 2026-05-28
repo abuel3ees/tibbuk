@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Events\OrderPlaced;
+use App\Models\Discount;
 use App\Models\Order;
 use App\Models\Product;
 use Illuminate\Http\RedirectResponse;
@@ -21,6 +22,7 @@ class OrderController extends Controller
             'customer_facebook' => ['required', 'string', 'max:500'],
             'delivery_address'  => ['required', 'string', 'max:500'],
             'notes'            => ['nullable', 'string', 'max:1000'],
+            'discount_id'      => ['nullable', 'integer', 'exists:discounts,id'],
             'items'                   => ['required', 'array', 'min:1'],
             'items.*.product_id'      => ['required', 'exists:products,id'],
             'items.*.quantity'        => ['required', 'integer', 'min:1'],
@@ -82,6 +84,27 @@ class OrderController extends Controller
             ];
         }
 
+        // Apply discount if provided and still valid
+        $discountAmount = 0;
+        $discount = null;
+        if (!empty($validated['discount_id'])) {
+            $discount = Discount::find($validated['discount_id']);
+            if ($discount && $discount->isValid()) {
+                if ($discount->applies_to === 'categories' && !empty($discount->categories)) {
+                    $applicableSubtotal = collect($orderItems)
+                        ->filter(function ($item) use ($discount) {
+                            $product = Product::find($item['product_id']);
+                            return $product && in_array($product->category, $discount->categories);
+                        })
+                        ->sum(fn ($item) => $item['unit_price'] * $item['quantity']);
+                    $discountAmount = $discount->calculateDiscount($applicableSubtotal);
+                } else {
+                    $discountAmount = $discount->calculateDiscount($total);
+                }
+                $total = max(0, $total - $discountAmount);
+            }
+        }
+
         $order = Order::create([
             'customer_name'    => $validated['customer_name'],
             'customer_phone'   => $validated['customer_phone'],
@@ -91,9 +114,15 @@ class OrderController extends Controller
             'notes'            => $validated['notes'] ?? null,
             'total_amount'     => $total,
             'status'           => 'pending',
+            'discount_id'      => $discount?->id,
+            'discount_amount'  => $discountAmount,
         ]);
 
         $order->items()->createMany($orderItems);
+
+        if ($discount) {
+            $discount->increment('uses_count');
+        }
 
         OrderPlaced::dispatch($order);
 

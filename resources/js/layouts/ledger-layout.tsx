@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 interface Props {
     children: React.ReactNode;
     title: React.ReactNode;
-    active: 'dashboard' | 'orders' | 'products' | 'financials' | 'media';
+    active: 'dashboard' | 'orders' | 'products' | 'financials' | 'media' | 'discounts';
     eyebrow?: string;
     actions?: React.ReactNode;
     counts?: { orders?: number; products?: number; pending?: number; lowStock?: number };
@@ -19,6 +19,7 @@ const CMD_ITEMS = [
     { ic: '⊟', label: 'Products', sub: 'Catalogue', href: '/admin/products', keys: 'G P' },
     { ic: '↗', label: 'Financials', sub: 'Revenue report', href: '/admin/financials', keys: '' },
     { ic: '▦', label: 'Media', sub: 'File library', href: '/admin/media', keys: '' },
+    { ic: '%', label: 'Discounts', sub: 'Promotions & sales', href: '/admin/discounts', keys: '' },
     { ic: '⊕', label: 'New Product', sub: 'Add to catalogue', href: '/admin/products/create', keys: '' },
 ];
 
@@ -103,6 +104,9 @@ export default function LedgerLayout({ children, title, active, eyebrow, actions
                     </Link>
                     <Link href="/admin/media" className="sb-item" data-active={active === 'media' ? '1' : '0'}>
                         <span className="sb-label">Media</span>
+                    </Link>
+                    <Link href="/admin/discounts" className="sb-item" data-active={active === 'discounts' ? '1' : '0'}>
+                        <span className="sb-label">Discounts</span>
                     </Link>
                 </div>
 

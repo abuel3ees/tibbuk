@@ -4,9 +4,11 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Order;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 use Rap2hpoutre\FastExcel\FastExcel;
@@ -147,6 +149,18 @@ class OrderController extends Controller
 
         $filename = 'orders-' . now()->format('Y-m-d') . '.xlsx';
         return (new FastExcel($rows))->download($filename);
+    }
+
+    public function resetSequence(): JsonResponse
+    {
+        $count = Order::withTrashed()->count();
+        if ($count > 0) {
+            return response()->json(['error' => "Cannot reset: {$count} order(s) exist. Delete all orders first."], 422);
+        }
+
+        DB::statement('ALTER SEQUENCE orders_id_seq RESTART WITH 1');
+
+        return response()->json(['ok' => true]);
     }
 
     public function financials(): Response

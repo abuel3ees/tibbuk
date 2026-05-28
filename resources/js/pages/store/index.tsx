@@ -687,7 +687,21 @@ function Footer({ lang, navigate }: { lang: Lang; navigate: (r: string) => void 
 }
 
 // ---- CART DRAWER ----
-function CartDrawer({ open, onClose, lang, cart, setCart, products, navigate, onCheckout }: {
+function calcDiscount(discount: ActiveDiscount | null | undefined, subtotal: number, items: (CartItem & { product: Product })[], linePrice: (l: CartItem & { product: Product }) => number): number {
+    if (!discount) return 0;
+    let base: number;
+    if (discount.applies_to === 'products') {
+        base = items.filter(l => discount.product_ids.includes(l.id)).reduce((s, l) => s + linePrice(l) * l.qty, 0);
+    } else if (discount.applies_to === 'categories') {
+        base = items.filter(l => discount.categories.includes(l.product.category ?? '')).reduce((s, l) => s + linePrice(l) * l.qty, 0);
+    } else {
+        base = subtotal;
+    }
+    if (discount.type === 'percentage') return Math.round(base * (discount.value / 100) * 100) / 100;
+    return Math.min(discount.value, base);
+}
+
+function CartDrawer({ open, onClose, lang, cart, setCart, products, navigate, onCheckout, activeDiscount }: {
     open: boolean;
     onClose: () => void;
     lang: Lang;
@@ -696,6 +710,7 @@ function CartDrawer({ open, onClose, lang, cart, setCart, products, navigate, on
     products: Product[];
     navigate: (r: string) => void;
     onCheckout: () => void;
+    activeDiscount?: ActiveDiscount | null;
 }) {
     const t = COPY[lang].cart;
 
@@ -721,6 +736,7 @@ function CartDrawer({ open, onClose, lang, cart, setCart, products, navigate, on
     }
 
     const subtotal = items.reduce((s, l) => s + linePrice(l) * l.qty, 0);
+    const discountAmount = calcDiscount(activeDiscount, subtotal, items, linePrice);
     const ship = 3;
     const totalCount = items.reduce((s, l) => s + l.qty, 0);
 
@@ -812,13 +828,19 @@ function CartDrawer({ open, onClose, lang, cart, setCart, products, navigate, on
                                 <span>{t.sub}</span>
                                 <span className="num">{fmt(subtotal, t.currency)}</span>
                             </div>
+                            {discountAmount > 0 && (
+                                <div className="cart-totals__row" style={{ color: 'var(--accent, #1F5B4A)' }}>
+                                    <span>{lang === 'ar' ? 'خصم' : 'Discount'} ({activeDiscount!.type === 'percentage' ? `${activeDiscount!.value}%` : `${activeDiscount!.value} JD`})</span>
+                                    <span className="num">−{fmt(discountAmount, t.currency)}</span>
+                                </div>
+                            )}
                             <div className="cart-totals__row">
                                 <span>{t.ship}</span>
                                 <span>{ship === 0 ? t.shipFree : <span className="num">{fmt(ship, t.currency)}</span>}</span>
                             </div>
                             <div className="cart-totals__row cart-totals__row--big">
                                 <span>{t.total}</span>
-                                <span className="num">{fmt(subtotal + ship, t.currency)}</span>
+                                <span className="num">{fmt(subtotal - discountAmount + ship, t.currency)}</span>
                             </div>
                         </div>
                         <button className="btn btn--full btn--lg" onClick={onCheckout}>
@@ -832,13 +854,14 @@ function CartDrawer({ open, onClose, lang, cart, setCart, products, navigate, on
 }
 
 // ---- CHECKOUT MODAL ----
-function CheckoutModal({ open, onClose, cart, setCart, products, lang }: {
+function CheckoutModal({ open, onClose, cart, setCart, products, lang, activeDiscount }: {
     open: boolean;
     onClose: () => void;
     cart: CartItem[];
     setCart: React.Dispatch<React.SetStateAction<CartItem[]>>;
     products: Product[];
     lang: Lang;
+    activeDiscount?: ActiveDiscount | null;
 }) {
     const t = COPY[lang].checkout;
     const cartT = COPY[lang].cart;
@@ -879,6 +902,7 @@ function CheckoutModal({ open, onClose, cart, setCart, products, lang }: {
     }
 
     const subtotal = items.reduce((s, l) => s + linePrice(l) * l.qty, 0);
+    const discountAmount = calcDiscount(activeDiscount, subtotal, items, linePrice);
     const ship = 3;
 
     function validatePhone(phone: string) {
@@ -903,6 +927,7 @@ function CheckoutModal({ open, onClose, cart, setCart, products, lang }: {
         setSubmitting(true);
         router.post('/orders', {
             ...form,
+            discount_id: activeDiscount?.id ?? undefined,
             items: cart.map(i => ({
                 product_id: i.id,
                 quantity: i.qty,
@@ -1019,13 +1044,19 @@ function CheckoutModal({ open, onClose, cart, setCart, products, lang }: {
                                     <span className="num">{fmt(linePrice(l) * l.qty, cartT.currency)}</span>
                                 </div>
                             ))}
+                            {discountAmount > 0 && (
+                                <div className="order-summary__line" style={{ color: 'var(--accent, #1F5B4A)' }}>
+                                    <span>{lang === 'ar' ? 'خصم' : 'Discount'} ({activeDiscount!.type === 'percentage' ? `${activeDiscount!.value}%` : `${activeDiscount!.value} JD`})</span>
+                                    <span className="num">−{fmt(discountAmount, cartT.currency)}</span>
+                                </div>
+                            )}
                             <div className="order-summary__line">
                                 <span>{cartT.ship}</span>
                                 <span>{ship === 0 ? cartT.shipFree : <span className="num">{fmt(ship, cartT.currency)}</span>}</span>
                             </div>
                             <div className="order-summary__total">
                                 <span>{cartT.total}</span>
-                                <span className="num">{fmt(subtotal + ship, cartT.currency)}</span>
+                                <span className="num">{fmt(subtotal - discountAmount + ship, cartT.currency)}</span>
                             </div>
                         </div>
 
@@ -2090,14 +2121,59 @@ interface HeroContent {
     lede_en: string | null; lede_ar: string | null;
 }
 
+interface ActiveDiscount {
+    id: number;
+    name: string;
+    type: 'percentage' | 'fixed';
+    value: number;
+    applies_to: 'all' | 'products' | 'categories';
+    product_ids: number[];
+    categories: string[];
+    max_uses: number | null;
+    uses_count: number;
+    remaining_uses: number | null;
+    show_banner: boolean;
+    banner_text: string | null;
+}
+
 interface Props {
     products: Product[];
     categories: string[];
     hero_images: string[];
     hero_content: HeroContent;
+    activeDiscount?: ActiveDiscount | null;
 }
 
-export default function StoreIndex({ products, hero_images, hero_content }: Props) {
+function SaleBanner({ discount, lang }: { discount: ActiveDiscount; lang: Lang }) {
+    const isRtl = lang === 'ar';
+    return (
+        <div style={{
+            background: 'var(--accent, #1F5B4A)',
+            color: '#fff',
+            padding: '10px 20px',
+            textAlign: 'center',
+            fontFamily: "'Inter', sans-serif",
+            fontSize: 13,
+            fontWeight: 500,
+            letterSpacing: '.01em',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 12,
+            flexWrap: 'wrap',
+        }}>
+            <span style={{ opacity: .8 }}>🏷</span>
+            <span>{discount.banner_text || discount.name}</span>
+            {discount.remaining_uses !== null && (
+                <span style={{ opacity: .75, fontSize: 11, fontWeight: 400 }}>
+                    — {isRtl ? `${discount.remaining_uses} طلبات متبقية` : `${discount.remaining_uses} use${discount.remaining_uses !== 1 ? 's' : ''} left`}
+                </span>
+            )}
+        </div>
+    );
+}
+
+export default function StoreIndex({ products, hero_images, hero_content, activeDiscount }: Props) {
     const [lang, setLang] = useState<Lang>('en');
     const [dark, setDark] = useState<boolean>(() => {
         try { return localStorage.getItem('tbk_dark') !== 'false'; } catch { return true; }
@@ -2196,6 +2272,7 @@ export default function StoreIndex({ products, hero_images, hero_content }: Prop
                 />
             </Head>
             <a className="skip" href="#main">{lang === 'en' ? 'Skip to content' : 'تخطّى إلى المحتوى'}</a>
+            {activeDiscount?.show_banner && <SaleBanner discount={activeDiscount} lang={lang} />}
             <MetaStrip t={COPY[lang]} />
             <Header lang={lang} setLang={setLang} dark={dark} setDark={setDark} route={route} navigate={navigate} cartCount={cartCount} openCart={() => setCartOpen(true)} openSearch={() => setSearchOpen(true)} />
             <main id="main">
@@ -2213,6 +2290,7 @@ export default function StoreIndex({ products, hero_images, hero_content }: Prop
                 setCart={setCart}
                 products={products}
                 navigate={navigate}
+                activeDiscount={activeDiscount}
                 onCheckout={() => { setCartOpen(false); setCheckoutOpen(true); }}
             />
             <CheckoutModal
@@ -2222,6 +2300,7 @@ export default function StoreIndex({ products, hero_images, hero_content }: Prop
                 setCart={setCart}
                 products={products}
                 lang={lang}
+                activeDiscount={activeDiscount}
             />
             {searchOpen && (
                 <SearchOverlay

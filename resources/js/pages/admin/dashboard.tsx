@@ -315,6 +315,9 @@ export default function Dashboard({
                         <Link href="/admin/media" className="sb-item" data-active="0">
                             <span className="sb-label">Media</span>
                         </Link>
+                        <Link href="/admin/discounts" className="sb-item" data-active="0">
+                            <span className="sb-label">Discounts</span>
+                        </Link>
                     </div>
 
                     <div className="sb-section">

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\DiscountController as AdminDiscountController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\NotificationController;
 use App\Http\Controllers\Admin\OrderController as AdminOrderController;
@@ -12,6 +13,7 @@ use Illuminate\Support\Facades\Route;
 
 // Public storefront
 Route::get('/', [StoreController::class, 'index'])->name('store.index');
+Route::get('/api/active-discount', [StoreController::class, 'activeDiscount'])->name('active-discount');
 Route::get('/products/{product:slug}', [StoreController::class, 'show'])->name('store.product');
 
 // Guest checkout & tracking
@@ -67,7 +69,21 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'verified'])->group(
     Route::post('/media/{medium}/assign', [MediaController::class, 'assign'])->name('media.assign');
 
     // Notifications
+    Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount'])->name('notifications.unread-count');
     Route::post('/notifications/read', [NotificationController::class, 'markRead'])->name('notifications.read');
+
+    // Discounts
+    Route::get('/discounts', [AdminDiscountController::class, 'index'])->name('discounts.index');
+    Route::get('/discounts/create', [AdminDiscountController::class, 'create'])->name('discounts.create');
+    Route::post('/discounts', [AdminDiscountController::class, 'store'])->name('discounts.store');
+    Route::get('/discounts/{discount}/edit', [AdminDiscountController::class, 'edit'])->name('discounts.edit');
+    Route::put('/discounts/{discount}', [AdminDiscountController::class, 'update'])->name('discounts.update');
+    Route::delete('/discounts/{discount}', [AdminDiscountController::class, 'destroy'])->name('discounts.destroy');
+    Route::patch('/discounts/{discount}/toggle', [AdminDiscountController::class, 'toggle'])->name('discounts.toggle');
+
+    // Order sequence reset
+    Route::post('/orders/reset-sequence', [AdminOrderController::class, 'resetSequence'])->name('orders.reset-sequence');
 });
 
 require __DIR__.'/settings.php';

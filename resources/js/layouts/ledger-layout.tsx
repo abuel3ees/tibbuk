@@ -81,9 +81,8 @@ export default function LedgerLayout({ children, title, active, eyebrow, actions
             {/* ── SIDEBAR ─────────────────────────────────────────── */}
             <aside className="sb">
                 <div className="sb-mark">
-                    <div className="mono">Tibbuk · Medical Store</div>
-                    <div className="word">Tibbuk <em>·</em> طِبّك</div>
-                    <div className="tag">Admin Dashboard</div>
+                    <img src="/images/logo.jpg" alt="Tibbuk" style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover' }} />
+                    <div className="tag" style={{ marginTop: 4 }}>Admin Dashboard</div>
                 </div>
 
                 <div className="sb-section">

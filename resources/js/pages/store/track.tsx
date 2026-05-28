@@ -44,8 +44,8 @@ export default function TrackOrder({ order }: Props) {
             {/* Header */}
             <header className="bg-white dark:bg-[#0E1512] border-b border-[#E8E1D0] dark:border-[#1C2822]">
                 <div className="max-w-2xl mx-auto px-5 py-4 flex items-center gap-3">
-                    <a href="/" className="text-xl font-semibold text-[#16201D] dark:text-[#EAE6DE] tracking-tight">
-                        Tibbuk <span className="font-light text-[#6A746F] dark:text-[#4A5A55]">طِبّك</span>
+                    <a href="/">
+                        <img src="/images/logo.jpg" alt="Tibbuk" style={{ height: 38, width: 38, borderRadius: '50%', objectFit: 'cover', display: 'block' }} />
                     </a>
                 </div>
             </header>

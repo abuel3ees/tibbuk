@@ -441,10 +441,8 @@ function Header({ lang, setLang, dark, setDark, route, navigate, cartCount, open
     return (
         <header className="site-header">
             <div className="wrap site-header__bar">
-                <button className="brand" onClick={() => navigate('home')} aria-label="Tibbuk — home">
-                    <span className="brand__word">Tibbuk</span>
-                    <span className="brand__dot" />
-                    <span className="brand__ar">طِبّك</span>
+                <button className="brand" onClick={() => navigate('home')} aria-label="Tibbuk — home" style={{ alignItems: 'center' }}>
+                    <img src="/images/logo.jpg" alt="Tibbuk" style={{ height: 38, width: 38, borderRadius: '50%', objectFit: 'cover', display: 'block' }} />
                 </button>
                 <nav className="site-header__nav" aria-label="Primary">
                     <a className={route === 'home' ? 'active' : ''} onClick={() => navigate('home')}>{t.nav.home}</a>
@@ -642,10 +640,8 @@ function Footer({ lang, navigate }: { lang: Lang; navigate: (r: string) => void 
             <div className="wrap">
                 <div className="site-footer__grid">
                     <div>
-                        <button className="site-footer__brand" onClick={() => navigate('home')}>
-                            <span className="brand__word">Tibbuk</span>
-                            <span className="brand__dot" />
-                            <span className="brand__ar">طِبّك</span>
+                        <button className="site-footer__brand" onClick={() => navigate('home')} style={{ alignItems: 'center' }}>
+                            <img src="/images/logo.jpg" alt="Tibbuk" style={{ height: 44, width: 44, borderRadius: '50%', objectFit: 'cover', display: 'block' }} />
                         </button>
                         <p className="site-footer__sub">{f.tag}</p>
                         <div className="site-footer__socials">

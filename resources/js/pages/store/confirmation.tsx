@@ -45,10 +45,8 @@ export default function Confirmation({ order }: Props) {
 
             <header className="site-header" style={{ position: 'relative' }}>
                 <div className="wrap site-header__bar">
-                    <Link href="/" className="brand">
-                        <span className="brand__word">Tibbak</span>
-                        <span className="brand__dot" />
-                        <span className="brand__ar">طِبّك</span>
+                    <Link href="/" className="brand" style={{ alignItems: 'center' }}>
+                        <img src="/images/logo.jpg" alt="Tibbuk" style={{ height: 38, width: 38, borderRadius: '50%', objectFit: 'cover', display: 'block' }} />
                     </Link>
                     <div />
                     <div />

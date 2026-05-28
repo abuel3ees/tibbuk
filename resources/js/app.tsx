@@ -41,5 +41,8 @@ createInertiaApp({
     },
 });
 
+// Reload when Vite can't find a chunk after a new deploy (stale cached page)
+window.addEventListener('vite:preloadError', () => window.location.reload());
+
 // This will set light / dark mode on load...
 initializeTheme();

@@ -609,19 +609,33 @@ export default function OrderShow({ order, products }: Props) {
                                             </tr>
                                         );
                                     })}
-                                </tbody>
-                                <tfoot>
-                                    <tr style={{ borderTop: '.5px solid var(--hair)' }}>
-                                        <td colSpan={4} style={{ textAlign: 'right', fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--ink-mute)' }}>Delivery fee</td>
-                                        <td style={{ textAlign: 'right' }}>
-                                            <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8, cursor: 'pointer' }}>
-                                                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: includeDelivery ? 'var(--ink)' : 'var(--ink-mute)' }}>
-                                                    {includeDelivery ? '3.00 JOD' : '—'}
-                                                </span>
+                                    {/* Delivery fee row */}
+                                    <tr style={{ opacity: includeDelivery ? 1 : 0.4 }}>
+                                        <td style={{ minWidth: 160 }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                <div style={{ width: 28, height: 28, borderRadius: 3, background: 'var(--bg-sunk)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                    <span style={{ fontSize: 14 }}>🚚</span>
+                                                </div>
+                                                <span style={{ fontFamily: 'var(--font-display)', fontSize: 13, color: 'var(--ink-soft)' }}>Delivery Fee</span>
+                                            </div>
+                                        </td>
+                                        <td />
+                                        <td style={{ textAlign: 'right', verticalAlign: 'middle' }}>
+                                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--ink-mute)' }}>1</span>
+                                        </td>
+                                        <td style={{ textAlign: 'right', verticalAlign: 'middle' }}>
+                                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: includeDelivery ? 'var(--ink)' : 'var(--ink-mute)' }}>
+                                                {includeDelivery ? '3.00' : '—'}
+                                            </span>
+                                        </td>
+                                        <td style={{ textAlign: 'right', verticalAlign: 'middle' }}>
+                                            <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', cursor: 'pointer' }} title={includeDelivery ? 'Remove delivery fee' : 'Add delivery fee'}>
                                                 <input type="checkbox" checked={includeDelivery} onChange={e => setIncludeDelivery(e.target.checked)} style={{ width: 14, height: 14, accentColor: 'var(--accent)', cursor: 'pointer' }} />
                                             </label>
                                         </td>
                                     </tr>
+                                </tbody>
+                                <tfoot>
                                     <tr style={{ borderTop: '.5px solid var(--rule)' }}>
                                         <td colSpan={4} style={{ textAlign: 'right', fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--ink-mute)' }}>New Total</td>
                                         <td style={{ textAlign: 'right' }}>

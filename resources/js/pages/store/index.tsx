@@ -1163,13 +1163,14 @@ function HeroSlideshow({ images }: { images: string[] }) {
     );
 }
 
-function HomePage({ lang, navigate, products, addToCart, heroImages, heroContent }: {
+function HomePage({ lang, navigate, products, addToCart, heroImages, heroContent, categoryImages }: {
     lang: Lang;
     navigate: (r: string, pid?: number | null, cat?: string | null) => void;
     products: Product[];
     addToCart: (id: number, variant?: string | null, engraving?: string, stitching?: string, size?: string, gender?: string, color?: string) => void;
     heroImages: string[];
     heroContent: HeroContent;
+    categoryImages: Record<string, string>;
 }) {
     const t = COPY[lang];
     const pill  = lang === 'en' ? (heroContent.pill_en  || t.hero.pill)  : (heroContent.pill_ar  || t.hero.pill);
@@ -1234,7 +1235,7 @@ function HomePage({ lang, navigate, products, addToCart, heroImages, heroContent
                     </div>
                     <div className="cats">
                         {dynamicCats.map(c => {
-                            const img = category_images[c.name];
+                            const img = categoryImages[c.name];
                             return (
                                 <button key={c.name} className={`cat${img ? ' cat--img' : ''}`} onClick={() => navigate('collection', null, c.name)}>
                                     {img && <div className="cat__bg" style={{ backgroundImage: `url(${img})` }} />}
@@ -2276,7 +2277,7 @@ export default function StoreIndex({ products, hero_images, hero_content, catego
             <MetaStrip t={COPY[lang]} />
             <Header lang={lang} setLang={setLang} dark={dark} setDark={setDark} route={route} navigate={navigate} cartCount={cartCount} openCart={() => setCartOpen(true)} openSearch={() => setSearchOpen(true)} />
             <main id="main">
-                {route === 'home' && <HomePage lang={lang} navigate={navigate} products={products} addToCart={addToCart} heroImages={hero_images} heroContent={hero_content} />}
+                {route === 'home' && <HomePage lang={lang} navigate={navigate} products={products} addToCart={addToCart} heroImages={hero_images} heroContent={hero_content} categoryImages={category_images} />}
                 {route === 'collection' && <CollectionPage lang={lang} products={products} navigate={navigate} addToCart={addToCart} initialCat={initialCat} />}
                 {route === 'product' && productId !== null && <ProductPage lang={lang} productId={productId} navigate={navigate} products={products} addToCart={addToCart} showToast={showToast} />}
                 {route === 'how' && <HowPage lang={lang} navigate={navigate} />}

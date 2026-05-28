@@ -110,12 +110,12 @@ export default function OrdersIndex({ orders, filters }: Props) {
                         className="btn btn-ghost"
                         style={{ display: 'flex', alignItems: 'center', gap: 6 }}
                         onClick={() => {
-                            if (!confirm('Reset order IDs to start from 1? This only works if ALL orders have been deleted first.')) return;
+                            if (!confirm('This will permanently delete ALL orders and reset the ID counter to 1. This cannot be undone — continue?')) return;
                             fetch('/admin/orders/reset-sequence', {
                                 method: 'POST',
                                 headers: { 'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content ?? '' },
                             }).then(r => r.json()).then(d => {
-                                if (d.ok) alert('Order ID sequence reset to 1.');
+                                if (d.ok) { alert('All orders deleted and ID sequence reset to 1.'); window.location.reload(); }
                                 else alert(d.error ?? 'Failed.');
                             });
                         }}

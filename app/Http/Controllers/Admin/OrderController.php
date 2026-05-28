@@ -153,12 +153,16 @@ class OrderController extends Controller
 
     public function resetSequence(): JsonResponse
     {
-        $count = Order::withTrashed()->count();
-        if ($count > 0) {
-            return response()->json(['error' => "Cannot reset: {$count} order(s) exist. Delete all orders first."], 422);
-        }
+        Order::withTrashed()->each(function (Order $order) {
+            $order->items()->delete();
+            $order->forceDelete();
+        });
 
-        DB::statement('ALTER SEQUENCE orders_id_seq RESTART WITH 1');
+        if (DB::getDriverName() === 'pgsql') {
+            DB::statement('ALTER SEQUENCE orders_id_seq RESTART WITH 1');
+        } elseif (DB::getDriverName() === 'sqlite') {
+            DB::statement("DELETE FROM sqlite_sequence WHERE name = 'orders'");
+        }
 
         return response()->json(['ok' => true]);
     }

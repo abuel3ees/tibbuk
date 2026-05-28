@@ -1,8 +1,19 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
-import { ArrowLeft, Trash2, MapPin, Phone, Mail, Facebook, FileText, Package, Download, ExternalLink, Clipboard, ArrowRight } from 'lucide-react';
+import { ArrowLeft, Trash2, MapPin, Phone, Mail, Facebook, FileText, Package, Download, ExternalLink, Clipboard, ArrowRight, Pencil, X, Plus, Check } from 'lucide-react';
 import LedgerLayout from '@/layouts/ledger-layout';
 
+interface ProductVariant { value: string; price: string }
+interface AvailableProduct {
+    id: number; name: string; sku: string | null;
+    price: string; sale_price: string | null; cost_price: string | null;
+    variants: ProductVariant[] | null;
+    allows_engraving: boolean; engraving_price: number | null;
+    allows_stitching: boolean; stitching_price: number | null;
+    allows_sizes: boolean; available_sizes: string[] | null;
+    allows_gender: boolean;
+    allows_color: boolean; available_colors: string[] | null;
+}
 interface OrderItem {
     id: number; product_name: string; quantity: number; unit_price: string; cost_price: string | null;
     engraving_text: string | null; stitching_text: string | null; selected_size: string | null;
@@ -15,7 +26,20 @@ interface Order {
     admin_notes: string | null; total_amount: string; created_at: string; tracking_token: string;
     items: OrderItem[]; status_logs?: StatusLog[];
 }
-interface Props { order: Order }
+interface Props { order: Order; products: AvailableProduct[] }
+
+interface EditItem {
+    id: number | null;
+    product_id: number | null;
+    product_name: string;
+    quantity: number;
+    unit_price: string;
+    engraving_text: string;
+    stitching_text: string;
+    selected_size: string;
+    selected_gender: string;
+    selected_color: string;
+}
 
 const statuses = ['pending', 'processing', 'delivered', 'cancelled'];
 
@@ -126,10 +150,116 @@ function printReceipt(order: Order) {
     setTimeout(() => w.print(), 400);
 }
 
-export default function OrderShow({ order }: Props) {
+function itemToEdit(item: OrderItem): EditItem {
+    return {
+        id: item.id,
+        product_id: item.product?.id ?? null,
+        product_name: item.product_name,
+        quantity: item.quantity,
+        unit_price: Number(item.unit_price).toFixed(2),
+        engraving_text: item.engraving_text ?? '',
+        stitching_text: item.stitching_text ?? '',
+        selected_size: item.selected_size ?? '',
+        selected_gender: item.selected_gender ?? '',
+        selected_color: item.selected_color ?? '',
+    };
+}
+
+function blankItem(): EditItem {
+    return { id: null, product_id: null, product_name: '', quantity: 1, unit_price: '0.00', engraving_text: '', stitching_text: '', selected_size: '', selected_gender: '', selected_color: '' };
+}
+
+/* ── Inline field helpers ──────────────────────────────────────────────────── */
+const inp = { className: 'form-inp', style: { fontSize: 12, padding: '5px 8px' } };
+
+export default function OrderShow({ order, products }: Props) {
     const [updating, setUpdating] = useState(false);
     const [copied, setCopied] = useState(false);
+    const [editing, setEditing] = useState(false);
+    const [saving, setSaving] = useState(false);
     const notesForm = useForm({ admin_notes: order.admin_notes ?? '' });
+
+    /* ── Edit state ── */
+    const [editCustomer, setEditCustomer] = useState({
+        customer_name: order.customer_name,
+        customer_phone: order.customer_phone,
+        customer_email: order.customer_email ?? '',
+        customer_facebook: order.customer_facebook ?? '',
+        delivery_address: order.delivery_address,
+        notes: order.notes ?? '',
+    });
+    const [editItems, setEditItems] = useState<EditItem[]>(order.items.map(itemToEdit));
+    const [addingProduct, setAddingProduct] = useState(false);
+    const [productSearch, setProductSearch] = useState('');
+
+    function startEdit() {
+        setEditCustomer({
+            customer_name: order.customer_name,
+            customer_phone: order.customer_phone,
+            customer_email: order.customer_email ?? '',
+            customer_facebook: order.customer_facebook ?? '',
+            delivery_address: order.delivery_address,
+            notes: order.notes ?? '',
+        });
+        setEditItems(order.items.map(itemToEdit));
+        setEditing(true);
+    }
+
+    function cancelEdit() {
+        setEditing(false);
+        setAddingProduct(false);
+        setProductSearch('');
+    }
+
+    function setItemField(idx: number, field: keyof EditItem, value: string | number) {
+        setEditItems(items => items.map((it, i) => i === idx ? { ...it, [field]: value } : it));
+    }
+
+    function removeItem(idx: number) {
+        setEditItems(items => items.filter((_, i) => i !== idx));
+    }
+
+    function pickProduct(p: AvailableProduct, variant?: ProductVariant) {
+        const price = variant ? Number(variant.price) : Number(p.sale_price ?? p.price);
+        const name = p.name + (variant ? ` — ${variant.value}` : '');
+        setEditItems(items => [...items, {
+            id: null,
+            product_id: p.id,
+            product_name: name,
+            quantity: 1,
+            unit_price: price.toFixed(2),
+            engraving_text: '',
+            stitching_text: '',
+            selected_size: '',
+            selected_gender: '',
+            selected_color: '',
+        }]);
+        setAddingProduct(false);
+        setProductSearch('');
+    }
+
+    function saveEdit() {
+        setSaving(true);
+        router.put(`/admin/orders/${order.id}`, {
+            ...editCustomer,
+            items: editItems.map(it => ({
+                id: it.id,
+                product_id: it.product_id,
+                product_name: it.product_name,
+                quantity: it.quantity,
+                unit_price: it.unit_price,
+                engraving_text: it.engraving_text || null,
+                stitching_text: it.stitching_text || null,
+                selected_size: it.selected_size || null,
+                selected_gender: it.selected_gender || null,
+                selected_color: it.selected_color || null,
+            })),
+        }, {
+            onSuccess: () => { setEditing(false); setSaving(false); },
+            onError: () => setSaving(false),
+            preserveScroll: true,
+        });
+    }
 
     function copyTrackingLink() {
         const url = window.location.origin + '/track/' + order.tracking_token;
@@ -158,29 +288,51 @@ export default function OrderShow({ order }: Props) {
     const totalCost = order.items.reduce((s, i) => s + (i.cost_price ? Number(i.cost_price) * i.quantity : 0), 0);
     const orderNo = String(order.id).padStart(5, '0');
 
+    const editTotal = editItems.reduce((s, i) => s + Number(i.unit_price) * i.quantity, 0);
+
+    const filteredProducts = productSearch
+        ? products.filter(p => p.name.toLowerCase().includes(productSearch.toLowerCase()) || (p.sku ?? '').toLowerCase().includes(productSearch.toLowerCase()))
+        : products;
+
     const actions = (
         <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-            <select
-                value={order.status}
-                onChange={e => updateStatus(e.target.value)}
-                disabled={updating}
-                className={`tbl tag ${order.status}`}
-                style={{ background: 'transparent', border: '.5px solid var(--rule)', cursor: 'pointer', fontFamily: 'var(--font-mono)', fontSize: '9.5px', letterSpacing: '.12em', textTransform: 'uppercase', padding: '6px 10px', borderRadius: 2, outline: 'none', opacity: updating ? .5 : 1 }}
-            >
-                {statuses.map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
-            <a href={`/track/${order.tracking_token}`} target="_blank" rel="noopener noreferrer" className="btn btn-ghost" style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                <ExternalLink size={12} /> Track
-            </a>
-            <button onClick={copyTrackingLink} className="btn btn-ghost" style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                <Clipboard size={12} /> {copied ? 'Copied!' : 'Copy link'}
-            </button>
-            <button onClick={() => printReceipt(order)} className="btn btn-ghost" style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                <Download size={12} /> Export PDF
-            </button>
-            <button onClick={deleteOrder} className="btn" style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'rgb(185,28,28)', borderColor: 'rgb(185,28,28)' }}>
-                <Trash2 size={12} /> Delete
-            </button>
+            {editing ? (
+                <>
+                    <button onClick={saveEdit} disabled={saving} className="btn" style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                        <Check size={12} /> {saving ? 'Saving…' : 'Save Changes'}
+                    </button>
+                    <button onClick={cancelEdit} disabled={saving} className="btn btn-ghost" style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                        <X size={12} /> Cancel
+                    </button>
+                </>
+            ) : (
+                <>
+                    <select
+                        value={order.status}
+                        onChange={e => updateStatus(e.target.value)}
+                        disabled={updating}
+                        className={`tbl tag ${order.status}`}
+                        style={{ background: 'transparent', border: '.5px solid var(--rule)', cursor: 'pointer', fontFamily: 'var(--font-mono)', fontSize: '9.5px', letterSpacing: '.12em', textTransform: 'uppercase', padding: '6px 10px', borderRadius: 2, outline: 'none', opacity: updating ? .5 : 1 }}
+                    >
+                        {statuses.map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                    <button onClick={startEdit} className="btn btn-ghost" style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                        <Pencil size={12} /> Edit Order
+                    </button>
+                    <a href={`/track/${order.tracking_token}`} target="_blank" rel="noopener noreferrer" className="btn btn-ghost" style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                        <ExternalLink size={12} /> Track
+                    </a>
+                    <button onClick={copyTrackingLink} className="btn btn-ghost" style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                        <Clipboard size={12} /> {copied ? 'Copied!' : 'Copy link'}
+                    </button>
+                    <button onClick={() => printReceipt(order)} className="btn btn-ghost" style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                        <Download size={12} /> Export PDF
+                    </button>
+                    <button onClick={deleteOrder} className="btn" style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'rgb(185,28,28)', borderColor: 'rgb(185,28,28)' }}>
+                        <Trash2 size={12} /> Delete
+                    </button>
+                </>
+            )}
         </div>
     );
 
@@ -201,97 +353,285 @@ export default function OrderShow({ order }: Props) {
                 {/* ── Customer card ── */}
                 <div className="w c-4">
                     <div className="w-head"><span className="w-eyebrow">Customer</span></div>
-                    <div className="nm" style={{ fontSize: 20, marginBottom: 16 }}>{order.customer_name}</div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: 'var(--ink-soft)' }}>
-                            <Phone size={13} style={{ color: 'var(--ink-mute)', flexShrink: 0 }} />
-                            <span>{order.customer_phone}</span>
-                        </div>
-                        {order.customer_email && (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: 'var(--ink-soft)' }}>
-                                <Mail size={13} style={{ color: 'var(--ink-mute)', flexShrink: 0 }} />
-                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{order.customer_email}</span>
+
+                    {editing ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                            <div className="form-field">
+                                <label className="form-lbl">Name</label>
+                                <input {...inp} value={editCustomer.customer_name} onChange={e => setEditCustomer(c => ({ ...c, customer_name: e.target.value }))} />
                             </div>
-                        )}
-                        {order.customer_facebook && (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13 }}>
-                                <Facebook size={13} style={{ color: 'var(--ink-mute)', flexShrink: 0 }} />
-                                <a href={order.customer_facebook} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)', overflow: 'hidden', textOverflow: 'ellipsis' }}>{order.customer_facebook}</a>
+                            <div className="form-field">
+                                <label className="form-lbl">Phone</label>
+                                <input {...inp} value={editCustomer.customer_phone} onChange={e => setEditCustomer(c => ({ ...c, customer_phone: e.target.value }))} />
                             </div>
-                        )}
-                    </div>
-                    <div style={{ marginTop: 16, paddingTop: 16, borderTop: '.5px solid var(--hair)' }}>
-                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-                            <MapPin size={13} style={{ color: 'var(--ink-mute)', flexShrink: 0, marginTop: 2 }} />
-                            <p style={{ fontSize: 13, color: 'var(--ink-soft)', lineHeight: 1.6 }}>{order.delivery_address}</p>
-                        </div>
-                    </div>
-                    {order.notes && (
-                        <div style={{ marginTop: 14, paddingTop: 14, borderTop: '.5px solid var(--hair)' }}>
-                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-                                <FileText size={13} style={{ color: 'var(--ink-mute)', flexShrink: 0, marginTop: 2 }} />
-                                <p style={{ fontSize: 13, color: 'var(--ink-soft)', fontStyle: 'italic', lineHeight: 1.6 }}>{order.notes}</p>
+                            <div className="form-field">
+                                <label className="form-lbl">Email</label>
+                                <input {...inp} value={editCustomer.customer_email} onChange={e => setEditCustomer(c => ({ ...c, customer_email: e.target.value }))} placeholder="Optional" />
+                            </div>
+                            <div className="form-field">
+                                <label className="form-lbl">Facebook</label>
+                                <input {...inp} value={editCustomer.customer_facebook} onChange={e => setEditCustomer(c => ({ ...c, customer_facebook: e.target.value }))} placeholder="Optional" />
+                            </div>
+                            <div className="form-field">
+                                <label className="form-lbl">Delivery Address</label>
+                                <textarea {...inp} rows={3} value={editCustomer.delivery_address} onChange={e => setEditCustomer(c => ({ ...c, delivery_address: e.target.value }))} style={{ ...inp.style, resize: 'none', width: '100%' }} />
+                            </div>
+                            <div className="form-field">
+                                <label className="form-lbl">Order Notes</label>
+                                <textarea {...inp} rows={2} value={editCustomer.notes} onChange={e => setEditCustomer(c => ({ ...c, notes: e.target.value }))} placeholder="Optional" style={{ ...inp.style, resize: 'none', width: '100%' }} />
                             </div>
                         </div>
+                    ) : (
+                        <>
+                            <div className="nm" style={{ fontSize: 20, marginBottom: 16 }}>{order.customer_name}</div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: 'var(--ink-soft)' }}>
+                                    <Phone size={13} style={{ color: 'var(--ink-mute)', flexShrink: 0 }} />
+                                    <span>{order.customer_phone}</span>
+                                </div>
+                                {order.customer_email && (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: 'var(--ink-soft)' }}>
+                                        <Mail size={13} style={{ color: 'var(--ink-mute)', flexShrink: 0 }} />
+                                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{order.customer_email}</span>
+                                    </div>
+                                )}
+                                {order.customer_facebook && (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13 }}>
+                                        <Facebook size={13} style={{ color: 'var(--ink-mute)', flexShrink: 0 }} />
+                                        <a href={order.customer_facebook} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)', overflow: 'hidden', textOverflow: 'ellipsis' }}>{order.customer_facebook}</a>
+                                    </div>
+                                )}
+                            </div>
+                            <div style={{ marginTop: 16, paddingTop: 16, borderTop: '.5px solid var(--hair)' }}>
+                                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                                    <MapPin size={13} style={{ color: 'var(--ink-mute)', flexShrink: 0, marginTop: 2 }} />
+                                    <p style={{ fontSize: 13, color: 'var(--ink-soft)', lineHeight: 1.6 }}>{order.delivery_address}</p>
+                                </div>
+                            </div>
+                            {order.notes && (
+                                <div style={{ marginTop: 14, paddingTop: 14, borderTop: '.5px solid var(--hair)' }}>
+                                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                                        <FileText size={13} style={{ color: 'var(--ink-mute)', flexShrink: 0, marginTop: 2 }} />
+                                        <p style={{ fontSize: 13, color: 'var(--ink-soft)', fontStyle: 'italic', lineHeight: 1.6 }}>{order.notes}</p>
+                                    </div>
+                                </div>
+                            )}
+                        </>
                     )}
                 </div>
 
                 {/* ── Items card ── */}
                 <div className="w c-8" style={{ padding: 0, overflow: 'hidden' }}>
-                    <div style={{ padding: '20px var(--pad-card) 16px', borderBottom: '.5px solid var(--hair)' }}>
-                        <span className="w-eyebrow">Items · {order.items.length}</span>
+                    <div style={{ padding: '20px var(--pad-card) 16px', borderBottom: '.5px solid var(--hair)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <span className="w-eyebrow">Items · {editing ? editItems.length : order.items.length}</span>
+                        {editing && (
+                            <button className="btn btn-ghost" style={{ fontSize: 11, padding: '4px 10px', display: 'flex', alignItems: 'center', gap: 5 }}
+                                onClick={() => setAddingProduct(v => !v)}>
+                                <Plus size={11} /> Add product
+                            </button>
+                        )}
                     </div>
+
+                    {/* Product picker */}
+                    {editing && addingProduct && (
+                        <div style={{ padding: '12px var(--pad-card)', borderBottom: '.5px solid var(--hair)', background: 'var(--bg-sunk)' }}>
+                            <input
+                                autoFocus
+                                placeholder="Search products…"
+                                className="form-inp"
+                                style={{ fontSize: 12, padding: '6px 10px', marginBottom: 8 }}
+                                value={productSearch}
+                                onChange={e => setProductSearch(e.target.value)}
+                            />
+                            <div style={{ maxHeight: 220, overflowY: 'auto', border: '.5px solid var(--rule)', borderRadius: 3, background: 'var(--bg)' }}>
+                                {filteredProducts.map(p => (
+                                    <div key={p.id}>
+                                        <button
+                                            style={{ width: '100%', textAlign: 'left', padding: '8px 12px', background: 'none', border: 'none', cursor: 'pointer', borderBottom: '.5px solid var(--hair)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                                            onClick={() => pickProduct(p)}
+                                        >
+                                            <span style={{ fontFamily: 'var(--font-display)', fontSize: 13 }}>{p.name}</span>
+                                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--ink-mute)' }}>{Number(p.sale_price ?? p.price).toFixed(2)} JOD</span>
+                                        </button>
+                                        {p.variants && p.variants.map(v => (
+                                            <button key={v.value}
+                                                style={{ width: '100%', textAlign: 'left', padding: '6px 12px 6px 24px', background: 'none', border: 'none', cursor: 'pointer', borderBottom: '.5px solid var(--hair)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                                                onClick={() => pickProduct(p, v)}
+                                            >
+                                                <span style={{ fontFamily: 'var(--font-text)', fontSize: 12, color: 'var(--ink-soft)' }}>{p.name} — {v.value}</span>
+                                                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--ink-mute)' }}>{Number(v.price).toFixed(2)} JOD</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                ))}
+                                {filteredProducts.length === 0 && (
+                                    <div style={{ padding: '12px 16px', fontSize: 12, color: 'var(--ink-mute)' }}>No products found</div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
                     <div style={{ overflowX: 'auto' }}>
-                        <table className="tbl">
-                            <thead>
-                                <tr>
-                                    <th>Product</th>
-                                    <th className="center">Qty</th>
-                                    <th style={{ textAlign: 'right' }}>Price</th>
-                                    <th>Subtotal</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {order.items.map(item => (
-                                    <tr key={item.id}>
-                                        <td>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                                <div style={{ width: 28, height: 28, borderRadius: 3, background: 'var(--bg-sunk)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                                                    <Package size={13} style={{ color: 'var(--ink-mute)' }} />
-                                                </div>
-                                                <div>
-                                                    <span className="nm" style={{ fontSize: 15 }}>{item.product_name}</span>
-                                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0 12px', marginTop: 2 }}>
-                                                        {item.selected_size   && <span style={{ fontSize: 11, color: 'var(--ink-mute)' }}>Size: {item.selected_size}</span>}
-                                                        {item.selected_gender && <span style={{ fontSize: 11, color: 'var(--ink-mute)' }}>{item.selected_gender === 'male' ? 'Male' : 'Female'}</span>}
-                                                        {item.selected_color  && <span style={{ fontSize: 11, color: 'var(--ink-mute)' }}>Color: {item.selected_color}</span>}
-                                                        {item.engraving_text  && <span style={{ fontSize: 11, color: 'var(--ink-mute)', fontStyle: 'italic' }}>✎ {item.engraving_text}</span>}
-                                                        {item.stitching_text  && <span style={{ fontSize: 11, color: 'var(--ink-mute)', fontStyle: 'italic' }}>✦ {item.stitching_text}</span>}
+                        {editing ? (
+                            <table className="tbl">
+                                <thead>
+                                    <tr>
+                                        <th>Product</th>
+                                        <th>Details</th>
+                                        <th style={{ textAlign: 'right' }}>Qty</th>
+                                        <th style={{ textAlign: 'right' }}>Price</th>
+                                        <th style={{ textAlign: 'right' }}>Remove</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {editItems.map((item, idx) => {
+                                        const prod = products.find(p => p.id === item.product_id);
+                                        return (
+                                            <tr key={idx}>
+                                                <td style={{ minWidth: 160 }}>
+                                                    <input {...inp} value={item.product_name} onChange={e => setItemField(idx, 'product_name', e.target.value)} style={{ ...inp.style, width: '100%' }} />
+                                                </td>
+                                                <td style={{ minWidth: 300 }}>
+                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                                        {/* Engraving */}
+                                                        {(item.engraving_text || prod?.allows_engraving) && (
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--ink-mute)', width: 60 }}>✎ Engrave</span>
+                                                                <input {...inp} value={item.engraving_text} onChange={e => setItemField(idx, 'engraving_text', e.target.value)} placeholder="Name to engrave" style={{ ...inp.style, flex: 1 }} />
+                                                            </div>
+                                                        )}
+                                                        {/* Stitching */}
+                                                        {(item.stitching_text || prod?.allows_stitching) && (
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--ink-mute)', width: 60 }}>✦ Stitch</span>
+                                                                <input {...inp} value={item.stitching_text} onChange={e => setItemField(idx, 'stitching_text', e.target.value)} placeholder="Text to stitch" style={{ ...inp.style, flex: 1 }} />
+                                                            </div>
+                                                        )}
+                                                        {/* Size */}
+                                                        {(item.selected_size || prod?.allows_sizes) && (
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--ink-mute)', width: 60 }}>Size</span>
+                                                                {prod?.available_sizes?.length ? (
+                                                                    <select {...inp} value={item.selected_size} onChange={e => setItemField(idx, 'selected_size', e.target.value)} style={{ ...inp.style, flex: 1 }}>
+                                                                        <option value="">—</option>
+                                                                        {prod.available_sizes.map(s => <option key={s} value={s}>{s}</option>)}
+                                                                    </select>
+                                                                ) : (
+                                                                    <input {...inp} value={item.selected_size} onChange={e => setItemField(idx, 'selected_size', e.target.value)} style={{ ...inp.style, flex: 1 }} />
+                                                                )}
+                                                            </div>
+                                                        )}
+                                                        {/* Gender */}
+                                                        {(item.selected_gender || prod?.allows_gender) && (
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--ink-mute)', width: 60 }}>Gender</span>
+                                                                <select {...inp} value={item.selected_gender} onChange={e => setItemField(idx, 'selected_gender', e.target.value)} style={{ ...inp.style, flex: 1 }}>
+                                                                    <option value="">—</option>
+                                                                    <option value="male">Male</option>
+                                                                    <option value="female">Female</option>
+                                                                </select>
+                                                            </div>
+                                                        )}
+                                                        {/* Color */}
+                                                        {(item.selected_color || prod?.allows_color) && (
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--ink-mute)', width: 60 }}>Color</span>
+                                                                {prod?.available_colors?.length ? (
+                                                                    <select {...inp} value={item.selected_color} onChange={e => setItemField(idx, 'selected_color', e.target.value)} style={{ ...inp.style, flex: 1 }}>
+                                                                        <option value="">—</option>
+                                                                        {prod.available_colors.map(c => <option key={c} value={c}>{c}</option>)}
+                                                                    </select>
+                                                                ) : (
+                                                                    <input {...inp} value={item.selected_color} onChange={e => setItemField(idx, 'selected_color', e.target.value)} style={{ ...inp.style, flex: 1 }} />
+                                                                )}
+                                                            </div>
+                                                        )}
+                                                        {/* Add engraving toggle if product allows but not yet set */}
+                                                        {!item.engraving_text && !prod?.allows_engraving && (
+                                                            <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent)', fontSize: 11, textAlign: 'left', padding: 0 }}
+                                                                onClick={() => setItemField(idx, 'engraving_text', ' ')}>
+                                                                + Add engraving
+                                                            </button>
+                                                        )}
                                                     </div>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td className="center"><span className="num">{item.quantity}</span></td>
-                                        <td><span className="num" style={{ display: 'block', textAlign: 'right' }}>{Number(item.unit_price).toFixed(2)}</span></td>
-                                        <td>
-                                            <span className="num">{(Number(item.unit_price) * item.quantity).toFixed(2)}</span>
-                                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--ink-mute)', marginLeft: 4 }}>JOD</span>
+                                                </td>
+                                                <td style={{ textAlign: 'right', verticalAlign: 'top' }}>
+                                                    <input {...inp} type="number" min={1} value={item.quantity} onChange={e => setItemField(idx, 'quantity', parseInt(e.target.value) || 1)} style={{ ...inp.style, width: 60, textAlign: 'right' }} />
+                                                </td>
+                                                <td style={{ textAlign: 'right', verticalAlign: 'top' }}>
+                                                    <input {...inp} type="number" min={0} step={0.01} value={item.unit_price} onChange={e => setItemField(idx, 'unit_price', e.target.value)} style={{ ...inp.style, width: 80, textAlign: 'right' }} />
+                                                </td>
+                                                <td style={{ textAlign: 'right', verticalAlign: 'top' }}>
+                                                    <button onClick={() => removeItem(idx)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgb(185,28,28)', padding: 6, display: 'flex', alignItems: 'center' }}>
+                                                        <X size={14} />
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                                <tfoot>
+                                    <tr style={{ borderTop: '.5px solid var(--rule)' }}>
+                                        <td colSpan={4} style={{ textAlign: 'right', fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--ink-mute)' }}>New Total</td>
+                                        <td style={{ textAlign: 'right' }}>
+                                            <span style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 400 }}>{editTotal.toFixed(2)}</span>
+                                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--ink-mute)', marginLeft: 4 }}>JOD</span>
                                         </td>
                                     </tr>
-                                ))}
-                            </tbody>
-                            <tfoot>
-                                <tr style={{ borderTop: '.5px solid var(--rule)' }}>
-                                    <td colSpan={3} style={{ textAlign: 'right', fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--ink-mute)' }}>Total</td>
-                                    <td>
-                                        <span style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 400, letterSpacing: '-.02em' }}>{Number(order.total_amount).toFixed(2)}</span>
-                                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--ink-mute)', marginLeft: 4 }}>JOD</span>
-                                    </td>
-                                </tr>
-                            </tfoot>
-                        </table>
+                                </tfoot>
+                            </table>
+                        ) : (
+                            <table className="tbl">
+                                <thead>
+                                    <tr>
+                                        <th>Product</th>
+                                        <th className="center">Qty</th>
+                                        <th style={{ textAlign: 'right' }}>Price</th>
+                                        <th>Subtotal</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {order.items.map(item => (
+                                        <tr key={item.id}>
+                                            <td>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                                    <div style={{ width: 28, height: 28, borderRadius: 3, background: 'var(--bg-sunk)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                                        <Package size={13} style={{ color: 'var(--ink-mute)' }} />
+                                                    </div>
+                                                    <div>
+                                                        <span className="nm" style={{ fontSize: 15 }}>{item.product_name}</span>
+                                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0 12px', marginTop: 2 }}>
+                                                            {item.selected_size   && <span style={{ fontSize: 11, color: 'var(--ink-mute)' }}>Size: {item.selected_size}</span>}
+                                                            {item.selected_gender && <span style={{ fontSize: 11, color: 'var(--ink-mute)' }}>{item.selected_gender === 'male' ? 'Male' : 'Female'}</span>}
+                                                            {item.selected_color  && <span style={{ fontSize: 11, color: 'var(--ink-mute)' }}>Color: {item.selected_color}</span>}
+                                                            {item.engraving_text  && <span style={{ fontSize: 11, color: 'var(--ink-mute)', fontStyle: 'italic' }}>✎ {item.engraving_text}</span>}
+                                                            {item.stitching_text  && <span style={{ fontSize: 11, color: 'var(--ink-mute)', fontStyle: 'italic' }}>✦ {item.stitching_text}</span>}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="center"><span className="num">{item.quantity}</span></td>
+                                            <td><span className="num" style={{ display: 'block', textAlign: 'right' }}>{Number(item.unit_price).toFixed(2)}</span></td>
+                                            <td>
+                                                <span className="num">{(Number(item.unit_price) * item.quantity).toFixed(2)}</span>
+                                                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--ink-mute)', marginLeft: 4 }}>JOD</span>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                                <tfoot>
+                                    <tr style={{ borderTop: '.5px solid var(--rule)' }}>
+                                        <td colSpan={3} style={{ textAlign: 'right', fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--ink-mute)' }}>Total</td>
+                                        <td>
+                                            <span style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 400, letterSpacing: '-.02em' }}>{Number(order.total_amount).toFixed(2)}</span>
+                                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--ink-mute)', marginLeft: 4 }}>JOD</span>
+                                        </td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        )}
                     </div>
-                    {order.status === 'delivered' && totalCost > 0 && (
+                    {!editing && order.status === 'delivered' && totalCost > 0 && (
                         <div style={{ padding: '16px var(--pad-card)', borderTop: '.5px solid var(--hair)', background: 'var(--bg-sunk)', display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 16 }}>
                             {[
                                 { label: 'Revenue', value: totalRevenue, color: 'var(--ink)' },

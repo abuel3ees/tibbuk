@@ -46,6 +46,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'verified'])->group(
     Route::post('/orders/bulk-status', [AdminOrderController::class, 'bulkStatus'])->name('orders.bulk-status');
     Route::delete('/orders/bulk', [AdminOrderController::class, 'bulkDelete'])->name('orders.bulk-delete');
     Route::get('/orders/{order}', [AdminOrderController::class, 'show'])->name('orders.show');
+    Route::put('/orders/{order}', [AdminOrderController::class, 'update'])->name('orders.update');
     Route::patch('/orders/{order}/status', [AdminOrderController::class, 'updateStatus'])->name('orders.status');
     Route::patch('/orders/{order}/notes', [AdminOrderController::class, 'updateAdminNotes'])->name('orders.notes');
     Route::patch('/orders/{order}/restore', [AdminOrderController::class, 'restore'])->name('orders.restore');

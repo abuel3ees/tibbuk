@@ -139,7 +139,7 @@ const COPY = {
             newsCta: 'Subscribe',
             legal_l: '© 2026 Tibbuk. Registered in Amman, Jordan.',
             legal_r: 'Terms · Privacy · Refund policy',
-            pay: ['Visa', 'Mastercard', 'Click', 'eFAWATEERcom', 'COD'],
+            pay: ['COD', 'CliQ'],
         },
         addedToast: 'Added to cart',
         checkout: {
@@ -259,7 +259,7 @@ const COPY = {
             newsCta: 'اشترك',
             legal_l: '© ٢٠٢٦ طِبّك (Tibbuk). مسجَّلة في عمّان، الأردنّ.',
             legal_r: 'الشروط · الخصوصيّة · سياسة الإرجاع',
-            pay: ['Visa', 'Mastercard', 'Click', 'eFAWATEERcom', 'الدفع عند الاستلام'],
+            pay: ['الدفع عند الاستلام', 'CliQ'],
         },
         addedToast: 'أُضيف إلى السلّة',
         checkout: {

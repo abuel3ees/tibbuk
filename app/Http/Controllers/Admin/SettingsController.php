@@ -77,4 +77,41 @@ class SettingsController extends Controller
 
         return back()->with('success', 'Hero image added.');
     }
+
+    public function setCategoryImage(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'category' => ['required', 'string', 'max:255'],
+            'image'    => ['required', 'image', 'max:8192'],
+        ]);
+
+        $paths = Setting::categoryImagePaths();
+        $cat   = $request->input('category');
+
+        if (isset($paths[$cat]) && !str_starts_with($paths[$cat], 'http')) {
+            Storage::disk('spaces')->delete($paths[$cat]);
+        }
+
+        $paths[$cat] = $request->file('image')->store('settings/cats', 'spaces');
+        Setting::set('category_images', json_encode($paths));
+
+        return back()->with('success', 'Category image updated.');
+    }
+
+    public function removeCategoryImage(Request $request): RedirectResponse
+    {
+        $request->validate(['category' => ['required', 'string', 'max:255']]);
+
+        $paths = Setting::categoryImagePaths();
+        $cat   = $request->input('category');
+
+        if (isset($paths[$cat]) && !str_starts_with($paths[$cat], 'http')) {
+            Storage::disk('spaces')->delete($paths[$cat]);
+        }
+
+        unset($paths[$cat]);
+        Setting::set('category_images', json_encode($paths));
+
+        return back()->with('success', 'Category image removed.');
+    }
 }

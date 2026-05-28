@@ -47,7 +47,7 @@ const COPY = {
         dir: 'ltr' as const,
         meta_left: 'Ships across Jordan · Cash on delivery available',
         meta_mid: 'Amman · Irbid · Zarqa · Aqaba',
-        meta_right: '48 h delivery across Jordan',
+        meta_right: 'Fast delivery across Jordan',
         nav: { home: 'Home', shop: 'Shop', how: 'How it works' },
         util: { search: 'Search', cart: 'Cart' },
         hero: {
@@ -55,13 +55,13 @@ const COPY = {
             title_a: 'Everything for your ',
             title_em: 'clinical year',
             title_b: ', delivered to your door.',
-            lede: 'Stethoscopes, BP cuffs, otoscopes, scrubs, and pocket references — hand-picked by senior residents at Hashemite University, priced for students, shipped to all 12 governorates in 48 hours.',
+            lede: 'Stethoscopes, BP cuffs, otoscopes, scrubs, and pocket references — hand-picked by senior residents at Hashemite University, priced for students, shipped to all 12 governorates.',
             lede2: 'No complicated ordering. No minimum spend. Pay when it arrives.',
             cta_primary: 'Browse all products',
             cta_ghost: 'How it works',
             trust: [
                 { i: 'shield', t: '2-year warranty on all instruments' },
-                { i: 'truck',  t: '48-hour delivery across all Jordan' },
+                { i: 'truck',  t: 'Fast delivery across Jordan' },
                 { i: 'wallet', t: 'Cash on delivery — every governorate' },
                 { i: 'engrave', t: 'Free name engraving on stethoscopes' },
             ],
@@ -77,11 +77,11 @@ const COPY = {
         steps: [
             { n: '01', t: 'Build your kit',           b: 'Pick exactly what you need for your clinical year — individual instruments, white coats, or pocket references. No account needed.' },
             { n: '02', t: 'Check out — pay your way', b: 'Cash on delivery anywhere in Jordan. No account needed — just your name, number, and delivery address.' },
-            { n: '03', t: 'Receive in 48 hours',      b: 'We ship to all 12 governorates within 48 hours. Every stethoscope ships with free name engraving.' },
+            { n: '03', t: 'Receive your order',        b: 'We ship to all 12 governorates. Every stethoscope ships with free name engraving.' },
         ],
         features: [
             { i: 'engrave', t: 'Free engraving',   b: 'Add your name on any stethoscope at checkout.' },
-            { i: 'truck',   t: '48-hour delivery',  b: 'All 12 governorates, including Aqaba and Mafraq.' },
+            { i: 'truck',   t: 'Fast delivery',      b: 'All 12 governorates, including Aqaba and Mafraq.' },
             { i: 'wallet',  t: 'Cash on delivery',  b: 'Pay when you receive — across all Jordan.' },
             { i: 'shield',  t: '2-year warranty',   b: 'On all instruments purchased from Tibbuk.' },
         ],
@@ -90,10 +90,9 @@ const COPY = {
             qty: 'Quantity',
             addCart: 'Add to cart',
             assurances: [
-                { i: 'truck',  k: 'Ships in 48 h',    v: 'Across Jordan' },
+                { i: 'truck',  k: 'Fast shipping',     v: 'Across Jordan' },
                 { i: 'wallet', k: 'Cash on delivery', v: 'Available everywhere' },
                 { i: 'shield', k: '2-year warranty',  v: 'On all instruments' },
-                { i: 'return', k: '30-day returns',   v: 'Unopened items only' },
             ],
             specsTitle: 'Specifications',
             relatedTitle: 'Goes well with',
@@ -168,7 +167,7 @@ const COPY = {
         dir: 'rtl' as const,
         meta_left: 'نشحن في كلّ أنحاء الأردن · الدفع عند الاستلام متاح',
         meta_mid: 'عمّان · إربد · الزرقاء · العقبة',
-        meta_right: 'توصيل خلال ٤٨ ساعة في كلّ الأردنّ',
+        meta_right: 'توصيل سريع في كلّ الأردنّ',
         nav: { home: 'الرئيسية', shop: 'المتجر', how: 'كيف يعمل' },
         util: { search: 'بحث', cart: 'السلّة' },
         hero: {
@@ -176,13 +175,13 @@ const COPY = {
             title_a: 'كلّ ما يلزمك ',
             title_em: 'للسنة السريريّة',
             title_b: '، يصلك إلى باب بيتك.',
-            lede: 'سمّاعات وأجهزة ضغط ومناظير أذن وسكرَب ومراجع جيب — يختارها أطبّاء مقيمون في الجامعة الهاشميّة، بأسعار للطلّاب، تُشحن إلى كلّ المحافظات الـ١٢ خلال ٤٨ ساعة.',
+            lede: 'سمّاعات وأجهزة ضغط ومناظير أذن وسكرَب ومراجع جيب — يختارها أطبّاء مقيمون في الجامعة الهاشميّة، بأسعار للطلّاب، تُشحن إلى كلّ المحافظات الـ١٢.',
             lede2: 'بدون تعقيد. بدون حدٍّ أدنى للطلب. ادفع عند الاستلام.',
             cta_primary: 'تصفّح كلّ المنتجات',
             cta_ghost: 'كيف يعمل',
             trust: [
                 { i: 'shield', t: 'ضمان سنتين على جميع الأدوات' },
-                { i: 'truck',  t: 'توصيل خلال ٤٨ ساعة في كلّ الأردنّ' },
+                { i: 'truck',  t: 'توصيل سريع في كلّ الأردنّ' },
                 { i: 'wallet', t: 'الدفع عند الاستلام — كلّ المحافظات' },
                 { i: 'engrave', t: 'نقش اسم مجّاني على السمّاعات' },
             ],
@@ -198,11 +197,11 @@ const COPY = {
         steps: [
             { n: '٠١', t: 'جهّز عُدّتك',          b: 'اختر بالضبط ما تحتاجه للسنة السريريّة — أدوات، معاطف، أو مراجع جيب. بدون حساب.' },
             { n: '٠٢', t: 'ادفع كما يناسبك',       b: 'الدفع عند الاستلام في كلّ الأردنّ. لا حساب مطلوب — فقط اسمك ورقمك وعنوان التوصيل.' },
-            { n: '٠٣', t: 'استلم خلال ٤٨ ساعة',   b: 'نشحن إلى كلّ المحافظات الـ١٢ خلال ٤٨ ساعة. كلّ سمّاعة تُشحن بنقش اسم مجّاني.' },
+            { n: '٠٣', t: 'استلم طلبك',              b: 'نشحن إلى كلّ المحافظات الـ١٢. كلّ سمّاعة تُشحن بنقش اسم مجّاني.' },
         ],
         features: [
             { i: 'engrave', t: 'نقش مجّاني',           b: 'أضف اسمك على أيّ سمّاعة عند الدفع.' },
-            { i: 'truck',   t: 'توصيل خلال ٤٨ ساعة',  b: 'إلى كلّ المحافظات بما فيها العقبة والمفرق.' },
+            { i: 'truck',   t: 'توصيل سريع',            b: 'إلى كلّ المحافظات بما فيها العقبة والمفرق.' },
             { i: 'wallet',  t: 'الدفع عند الاستلام',  b: 'ادفع عند الاستلام في كلّ الأردنّ.' },
             { i: 'shield',  t: 'ضمان سنتين',          b: 'على كلّ الأدوات المشتراة من طِبّك.' },
         ],
@@ -211,10 +210,9 @@ const COPY = {
             qty: 'الكمّية',
             addCart: 'أضف إلى السلّة',
             assurances: [
-                { i: 'truck',  k: 'شحن خلال ٤٨ ساعة',   v: 'في كلّ الأردنّ' },
+                { i: 'truck',  k: 'شحن سريع',            v: 'في كلّ الأردنّ' },
                 { i: 'wallet', k: 'الدفع عند الاستلام',  v: 'متاح في كلّ مكان' },
                 { i: 'shield', k: 'ضمان سنتين',          v: 'على كلّ الأدوات' },
-                { i: 'return', k: 'إرجاع خلال ٣٠ يوماً', v: 'للمنتجات غير المفتوحة' },
             ],
             specsTitle: 'المواصفات',
             relatedTitle: 'قد يعجبك أيضاً',
@@ -1239,18 +1237,23 @@ function HomePage({ lang, navigate, products, addToCart, heroImages, heroContent
                         </button>
                     </div>
                     <div className="cats">
-                        {dynamicCats.map(c => (
-                            <button key={c.name} className="cat" onClick={() => navigate('collection', null, c.name)}>
-                                <div className="cat__icon"><CatIconComp kind={c.icon} /></div>
-                                <div>
-                                    <div className="cat__count">{c.count} {lang === 'en' ? 'items' : 'منتج'}</div>
-                                    <h3 className="cat__name">{c.name}</h3>
-                                </div>
-                                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                                    <div className="cat__arrow"><ArrowIcon /></div>
-                                </div>
-                            </button>
-                        ))}
+                        {dynamicCats.map(c => {
+                            const img = category_images[c.name];
+                            return (
+                                <button key={c.name} className={`cat${img ? ' cat--img' : ''}`} onClick={() => navigate('collection', null, c.name)}>
+                                    {img && <div className="cat__bg" style={{ backgroundImage: `url(${img})` }} />}
+                                    {img && <div className="cat__overlay" />}
+                                    <div className="cat__icon"><CatIconComp kind={c.icon} /></div>
+                                    <div>
+                                        <div className="cat__count">{c.count} {lang === 'en' ? 'items' : 'منتج'}</div>
+                                        <h3 className="cat__name">{c.name}</h3>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                                        <div className="cat__arrow"><ArrowIcon /></div>
+                                    </div>
+                                </button>
+                            );
+                        })}
                     </div>
                 </div>
             </section>
@@ -2141,6 +2144,7 @@ interface Props {
     categories: string[];
     hero_images: string[];
     hero_content: HeroContent;
+    category_images?: Record<string, string>;
     activeDiscount?: ActiveDiscount | null;
 }
 
@@ -2173,7 +2177,7 @@ function SaleBanner({ discount, lang }: { discount: ActiveDiscount; lang: Lang }
     );
 }
 
-export default function StoreIndex({ products, hero_images, hero_content, activeDiscount }: Props) {
+export default function StoreIndex({ products, hero_images, hero_content, category_images = {}, activeDiscount }: Props) {
     const [lang, setLang] = useState<Lang>('en');
     const [dark, setDark] = useState<boolean>(() => {
         try { return localStorage.getItem('tbk_dark') !== 'false'; } catch { return true; }

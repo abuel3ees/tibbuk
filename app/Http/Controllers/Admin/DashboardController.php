@@ -108,6 +108,8 @@ class DashboardController extends Controller
             'recentOrders'       => $recentOrders,
             'hero_images'        => Setting::heroImages(),
             'hero_content'       => Setting::heroContent(),
+            'category_images'    => Setting::categoryImages(),
+            'categories'         => Product::distinct()->orderBy('category')->pluck('category')->filter()->values(),
             'orders_per_day'     => $ordersPerDayFilled,
             'top_products'       => $topProducts,
             'revenue_by_category'=> $revenueByCategory,

@@ -58,6 +58,8 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'verified'])->group(
     Route::post('/settings/hero-images', [SettingsController::class, 'addHeroImages'])->name('settings.hero-images.add');
     Route::delete('/settings/hero-images', [SettingsController::class, 'removeHeroImage'])->name('settings.hero-images.remove');
     Route::post('/settings/hero-content', [SettingsController::class, 'updateHeroContent'])->name('settings.hero-content');
+    Route::post('/settings/category-images', [SettingsController::class, 'setCategoryImage'])->name('settings.category-images.set');
+    Route::delete('/settings/category-images', [SettingsController::class, 'removeCategoryImage'])->name('settings.category-images.remove');
     // Legacy
     Route::post('/settings/hero-image', [SettingsController::class, 'updateHeroImage'])->name('settings.hero-image');
 

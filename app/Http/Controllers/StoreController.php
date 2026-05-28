@@ -32,11 +32,12 @@ class StoreController extends Controller
         $discount = Discount::valid()->with('products:id')->latest()->first();
 
         return Inertia::render('store/index', [
-            'products'       => $products,
-            'categories'     => $categories,
-            'hero_images'    => Setting::heroImages(),
-            'hero_content'   => Setting::heroContent(),
-            'activeDiscount' => $discount ? $this->formatDiscount($discount) : null,
+            'products'         => $products,
+            'categories'       => $categories,
+            'hero_images'      => Setting::heroImages(),
+            'hero_content'     => Setting::heroContent(),
+            'category_images'  => Setting::categoryImages(),
+            'activeDiscount'   => $discount ? $this->formatDiscount($discount) : null,
         ]);
     }
 

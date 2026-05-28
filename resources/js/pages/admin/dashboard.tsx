@@ -21,6 +21,7 @@ interface CustomerStats { total: number; repeat: number; rate: number }
 
 interface Props {
     stats: Stats; financials: Financials; recentOrders: Order[]; hero_images: string[]; hero_content: HeroContent;
+    category_images: Record<string, string>; categories: string[];
     orders_per_day: DayData[]; top_products: TopProduct[]; revenue_by_category: CategoryRevenue[]; low_stock: LowStockProduct[];
     customer_stats?: CustomerStats;
 }
@@ -191,9 +192,75 @@ function HeroContentCard({ content }: { content: HeroContent }) {
     );
 }
 
+/* ── CategoryImagesCard ──────────────────────────────────────────────────── */
+function CategoryImagesCard({ categories, images }: { categories: string[]; images: Record<string, string> }) {
+    const inputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+    const csrfToken = () => (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content ?? '';
+
+    function upload(cat: string, file: File) {
+        const fd = new FormData();
+        fd.append('category', cat);
+        fd.append('image', file);
+        fd.append('_token', csrfToken());
+        fetch('/admin/settings/category-images', { method: 'POST', body: fd })
+            .then(() => router.reload({ only: ['category_images'] }));
+    }
+
+    function remove(cat: string) {
+        if (!confirm(`Remove image for "${cat}"?`)) return;
+        fetch('/admin/settings/category-images', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken() },
+            body: JSON.stringify({ category: cat }),
+        }).then(() => router.reload({ only: ['category_images'] }));
+    }
+
+    if (categories.length === 0) return null;
+
+    return (
+        <div className="settings-card">
+            <div className="settings-head">
+                <h3>Category Images</h3>
+                <p>Background image shown on each category card</p>
+            </div>
+            <div className="settings-body" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {categories.map(cat => (
+                    <div key={cat} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 0', borderBottom: '.5px solid var(--hair)' }}>
+                        <div style={{ width: 52, height: 52, borderRadius: 4, overflow: 'hidden', background: 'var(--bg-sunk)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            {images[cat]
+                                ? <img src={images[cat]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                : <ImagePlus size={16} style={{ color: 'var(--ink-mute)' }} />}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontFamily: 'var(--font-display)', fontSize: 14 }}>{cat}</div>
+                            {images[cat]
+                                ? <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--accent)' }}>Image set</div>
+                                : <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--ink-mute)' }}>No image</div>}
+                        </div>
+                        <div style={{ display: 'flex', gap: 6 }}>
+                            <button className="btn btn-ghost" style={{ fontSize: 11, padding: '4px 10px' }}
+                                onClick={() => inputRefs.current[cat]?.click()}>
+                                {images[cat] ? 'Replace' : 'Upload'}
+                            </button>
+                            {images[cat] && (
+                                <button className="btn btn-ghost" style={{ fontSize: 11, padding: '4px 10px', color: 'var(--red, #c0392b)' }}
+                                    onClick={() => remove(cat)}>
+                                    Remove
+                                </button>
+                            )}
+                        </div>
+                        <input ref={el => { inputRefs.current[cat] = el; }} type="file" accept="image/*" style={{ display: 'none' }}
+                            onChange={e => { const f = e.target.files?.[0]; if (f) upload(cat, f); e.target.value = ''; }} />
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
 /* ── Main dashboard ──────────────────────────────────────────────────────── */
 export default function Dashboard({
-    stats, financials, recentOrders, hero_images, hero_content,
+    stats, financials, recentOrders, hero_images, hero_content, category_images, categories,
     orders_per_day, top_products, revenue_by_category, low_stock, customer_stats,
 }: Props) {
 
@@ -602,6 +669,9 @@ export default function Dashboard({
                             </div>
                             <div className="c-6">
                                 <HeroContentCard content={hero_content} />
+                            </div>
+                            <div className="c-12">
+                                <CategoryImagesCard categories={categories} images={category_images} />
                             </div>
 
                         </div>

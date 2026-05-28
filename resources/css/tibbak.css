@@ -420,6 +420,26 @@ html.tibbak[dir="rtl"] .tbk .pcard__badge { left: auto; right: 12px; }
 .tbk .cat:hover .cat__arrow { background: var(--ink); color: var(--paper); }
 html.tibbak[dir="rtl"] .tbk .cat__arrow svg { transform: scaleX(-1); }
 
+/* category cards with background image */
+.tbk .cat__bg {
+  position: absolute; inset: 0;
+  background-size: cover; background-position: center;
+  border-radius: inherit;
+  z-index: 0;
+}
+.tbk .cat__overlay {
+  position: absolute; inset: 0;
+  background: linear-gradient(to top, rgba(0,0,0,.65) 0%, rgba(0,0,0,.25) 55%, rgba(0,0,0,.08) 100%);
+  border-radius: inherit;
+  z-index: 1;
+}
+.tbk .cat--img > *:not(.cat__bg):not(.cat__overlay) { position: relative; z-index: 2; }
+.tbk .cat--img .cat__count { color: rgba(255,255,255,.65); }
+.tbk .cat--img .cat__name  { color: #fff; }
+.tbk .cat--img .cat__icon  { background: rgba(255,255,255,.15); color: #fff; }
+.tbk .cat--img .cat__arrow { border-color: rgba(255,255,255,.55); color: #fff; }
+.tbk .cat--img:hover .cat__arrow { background: #fff; color: #111; border-color: #fff; }
+
 /* ----- features ----- */
 .tbk .features {
   background: var(--paper-2);

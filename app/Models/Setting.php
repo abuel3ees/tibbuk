@@ -63,4 +63,24 @@ class Setting extends Model
             'lede_ar'  => static::get('hero_lede_ar'),
         ];
     }
+
+    public static function categoryImagePaths(): array
+    {
+        $raw = static::get('category_images');
+        return $raw ? (json_decode($raw, true) ?? []) : [];
+    }
+
+    public static function categoryImages(): array
+    {
+        $paths = static::categoryImagePaths();
+        $result = [];
+        foreach ($paths as $cat => $path) {
+            if (str_starts_with($path, 'http')) {
+                $result[$cat] = $path;
+            } else {
+                $result[$cat] = Storage::disk('spaces')->url($path);
+            }
+        }
+        return $result;
+    }
 }

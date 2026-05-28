@@ -119,7 +119,7 @@ export default function TrackOrder({ order }: Props) {
                         {order.status === 'processing' && (
                             <div className="mt-6 pt-5 border-t border-[#F2EDE0] dark:border-[#1C2822] flex items-center gap-3 text-sm text-[#6A746F] dark:text-[#4A5A55]">
                                 <Truck className="w-4 h-4 shrink-0 text-[#1F5B4A] dark:text-[#3D9E7A]" />
-                                <span>Your order is being prepared and will be delivered within 48 hours.</span>
+                                <span>Your order is being prepared and will be delivered soon.</span>
                             </div>
                         )}
                         {order.status === 'delivered' && (

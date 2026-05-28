@@ -120,33 +120,22 @@ export default function Confirmation({ order }: Props) {
                     </div>
                 </div>
 
-                {(() => {
-                    const placed = new Date(order.created_at);
-                    const deadline = new Date(placed.getTime() + 48 * 60 * 60 * 1000);
-                    const fmt = (d: Date) => d.toLocaleString('en-GB', {
-                        weekday: 'long', day: 'numeric', month: 'long',
-                        hour: '2-digit', minute: '2-digit', hour12: false,
-                        timeZone: 'Asia/Amman',
-                    });
-                    return (
-                        <div style={{
-                            marginTop: 28, padding: '20px 28px',
-                            border: '1px solid var(--rule)', borderRadius: 'var(--tbk-radius-lg)',
-                            background: 'var(--primary-3)', display: 'flex', alignItems: 'flex-start', gap: 16,
-                        }}>
-                            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="var(--primary)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 2 }}>
-                                <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
-                            </svg>
-                            <div>
-                                <p className="eyebrow" style={{ marginBottom: 4 }}>Estimated Delivery</p>
-                                <p className="body" style={{ color: 'var(--ink)', fontWeight: 600 }}>By {fmt(deadline)}</p>
-                                <p style={{ fontSize: 13, color: 'var(--ink-mute)', marginTop: 4 }}>
-                                    We'll call <strong>{order.customer_phone}</strong> to confirm delivery details.
-                                </p>
-                            </div>
-                        </div>
-                    );
-                })()}
+                <div style={{
+                    marginTop: 28, padding: '20px 28px',
+                    border: '1px solid var(--rule)', borderRadius: 'var(--tbk-radius-lg)',
+                    background: 'var(--primary-3)', display: 'flex', alignItems: 'flex-start', gap: 16,
+                }}>
+                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="var(--primary)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 2 }}>
+                        <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
+                    </svg>
+                    <div>
+                        <p className="eyebrow" style={{ marginBottom: 4 }}>What happens next?</p>
+                        <p className="body" style={{ color: 'var(--ink)', fontWeight: 600 }}>We'll be in touch to confirm your delivery</p>
+                        <p style={{ fontSize: 13, color: 'var(--ink-mute)', marginTop: 4 }}>
+                            We'll call <strong>{order.customer_phone}</strong> to confirm delivery details.
+                        </p>
+                    </div>
+                </div>
 
                 <div style={{ textAlign: 'center', marginTop: 40, display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'center' }}>
                     <Link href="/" className="btn btn--lg">

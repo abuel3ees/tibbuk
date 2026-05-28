@@ -1,6 +1,6 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
-import { ArrowLeft, Trash2, MapPin, Phone, Mail, Facebook, FileText, Package, Download, ExternalLink, Clipboard, ArrowRight, Pencil, X, Plus, Check } from 'lucide-react';
+import { ArrowLeft, Trash2, MapPin, Phone, Mail, Facebook, FileText, Package, Download, ExternalLink, Clipboard, ArrowRight, Pencil, X, Plus, Check, MessageCircle } from 'lucide-react';
 import LedgerLayout from '@/layouts/ledger-layout';
 
 interface ProductVariant { value: string; price: string }
@@ -149,6 +149,35 @@ function printReceipt(order: Order) {
     w.document.close();
     w.focus();
     setTimeout(() => w.print(), 400);
+}
+
+function formatWhatsAppPhone(phone: string): string {
+    const digits = phone.replace(/\D/g, '');
+    if (digits.startsWith('962')) return digits;
+    if (digits.startsWith('0')) return '962' + digits.slice(1);
+    return '962' + digits;
+}
+
+function openWhatsApp(order: Order) {
+    const phone = formatWhatsAppPhone(order.customer_phone);
+    const orderNo = String(order.id).padStart(5, '0');
+    const itemLines = order.items
+        .map(i => `• ${i.product_name} ×${i.quantity} (${Number(i.unit_price).toFixed(2)} JD)`)
+        .join('\n');
+    const msg = [
+        `Hello ${order.customer_name}! 👋`,
+        ``,
+        `Thank you for your Tibbuk order #${orderNo}.`,
+        ``,
+        `Items:`,
+        itemLines,
+        ``,
+        `Total: ${Number(order.total_amount).toFixed(2)} JD`,
+        `Delivery to: ${order.delivery_address}`,
+        ``,
+        `Track your order: ${window.location.origin}/track/${order.tracking_token}`,
+    ].join('\n');
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
 }
 
 function itemToEdit(item: OrderItem): EditItem {
@@ -327,6 +356,9 @@ export default function OrderShow({ order, products }: Props) {
                     </a>
                     <button onClick={copyTrackingLink} className="btn btn-ghost" style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                         <Clipboard size={12} /> {copied ? 'Copied!' : 'Copy link'}
+                    </button>
+                    <button onClick={() => openWhatsApp(order)} className="btn btn-ghost" style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#25D366' }}>
+                        <MessageCircle size={12} /> WhatsApp
                     </button>
                     <button onClick={() => printReceipt(order)} className="btn btn-ghost" style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                         <Download size={12} /> Export PDF
@@ -644,13 +676,29 @@ export default function OrderShow({ order, products }: Props) {
                                     })}
                                 </tbody>
                                 <tfoot>
-                                    <tr style={{ borderTop: '.5px solid var(--rule)' }}>
-                                        <td colSpan={3} style={{ textAlign: 'right', fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--ink-mute)' }}>Total</td>
-                                        <td>
-                                            <span style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 400, letterSpacing: '-.02em' }}>{Number(order.total_amount).toFixed(2)}</span>
-                                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--ink-mute)', marginLeft: 4 }}>JOD</span>
-                                        </td>
-                                    </tr>
+                                    {(() => {
+                                        const subtotal = order.items.reduce((s, i) => s + Number(i.unit_price) * i.quantity, 0);
+                                        const delivery = Number(order.total_amount) - subtotal;
+                                        return (
+                                            <>
+                                                <tr style={{ borderTop: '.5px solid var(--hair)' }}>
+                                                    <td colSpan={3} style={{ textAlign: 'right', fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--ink-mute)' }}>Subtotal</td>
+                                                    <td><span className="num">{subtotal.toFixed(2)}</span><span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--ink-mute)', marginLeft: 4 }}>JOD</span></td>
+                                                </tr>
+                                                <tr>
+                                                    <td colSpan={3} style={{ textAlign: 'right', fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--ink-mute)' }}>Delivery</td>
+                                                    <td><span className="num">{delivery > 0 ? delivery.toFixed(2) : '—'}</span>{delivery > 0 && <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--ink-mute)', marginLeft: 4 }}>JOD</span>}</td>
+                                                </tr>
+                                                <tr style={{ borderTop: '.5px solid var(--rule)' }}>
+                                                    <td colSpan={3} style={{ textAlign: 'right', fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--ink-mute)' }}>Total</td>
+                                                    <td>
+                                                        <span style={{ fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 400, letterSpacing: '-.02em' }}>{Number(order.total_amount).toFixed(2)}</span>
+                                                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--ink-mute)', marginLeft: 4 }}>JOD</span>
+                                                    </td>
+                                                </tr>
+                                            </>
+                                        );
+                                    })()}
                                 </tfoot>
                             </table>
                         )}

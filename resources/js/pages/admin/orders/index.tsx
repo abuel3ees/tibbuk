@@ -1,6 +1,6 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Trash2, ArrowRight, Search, X, Download, RotateCcw } from 'lucide-react';
+import { Trash2, ArrowRight, Search, X, Download, RotateCcw, MessageCircle, Printer } from 'lucide-react';
 import LedgerLayout from '@/layouts/ledger-layout';
 
 interface OrderItem { id: number; product_name: string; quantity: number; unit_price: string }
@@ -17,6 +17,127 @@ function buildExportQuery(search: string, status: string): string {
 }
 
 const statuses = ['pending', 'processing', 'delivered', 'cancelled'];
+
+function formatWhatsAppPhone(phone: string): string {
+    const digits = phone.replace(/\D/g, '');
+    if (digits.startsWith('962')) return digits;
+    if (digits.startsWith('0')) return '962' + digits.slice(1);
+    return '962' + digits;
+}
+
+function openWhatsApp(order: Order) {
+    const phone = formatWhatsAppPhone(order.customer_phone);
+    const orderNo = String(order.id).padStart(5, '0');
+    const itemLines = order.items
+        .map(i => `• ${i.product_name} ×${i.quantity} (${Number(i.unit_price).toFixed(2)} JD)`)
+        .join('\n');
+    const msg = [
+        `Hello ${order.customer_name}! 👋`,
+        ``,
+        `Your Tibbuk order #${orderNo} details:`,
+        ``,
+        itemLines,
+        ``,
+        `Total: ${Number(order.total_amount).toFixed(2)} JD`,
+    ].join('\n');
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
+}
+
+function printSlips(orders: Order[]) {
+    const slips = orders.map(order => {
+        const orderNo = String(order.id).padStart(5, '0');
+        const date = new Date(order.created_at).toLocaleString('en-JO', { dateStyle: 'medium', timeStyle: 'short' });
+        const subtotal = order.items.reduce((s, i) => s + Number(i.unit_price) * i.quantity, 0);
+        const delivery = Number(order.total_amount) - subtotal;
+        const rows = order.items.map(i => `
+            <tr>
+                <td style="padding:7px 0;border-bottom:1px solid #eee;">${i.product_name}</td>
+                <td style="padding:7px 4px;border-bottom:1px solid #eee;text-align:center;">${i.quantity}</td>
+                <td style="padding:7px 0;border-bottom:1px solid #eee;text-align:right;font-family:monospace;">${(Number(i.unit_price) * i.quantity).toFixed(2)}</td>
+            </tr>`).join('');
+        return `
+        <div class="slip">
+            <div class="slip-header">
+                <div>
+                    <div class="brand">Tibbuk <span>طِبّك</span></div>
+                    <div class="sub">Packing Slip</div>
+                </div>
+                <div style="text-align:right;">
+                    <div class="order-no">#${orderNo}</div>
+                    <div class="meta">${date}</div>
+                    <div class="status-badge ${order.status}">${order.status}</div>
+                </div>
+            </div>
+            <div class="info-grid">
+                <div class="info-block">
+                    <div class="section-title">Customer</div>
+                    <div class="name">${order.customer_name}</div>
+                    <div class="meta">📞 ${order.customer_phone}</div>
+                    ${order.customer_email ? `<div class="meta">✉ ${order.customer_email}</div>` : ''}
+                </div>
+                <div class="info-block">
+                    <div class="section-title">Delivery Address</div>
+                    <div class="meta" style="margin-top:4px;">${order.delivery_address}</div>
+                </div>
+            </div>
+            <div class="section-title" style="margin-bottom:8px;">Items</div>
+            <table style="width:100%;border-collapse:collapse;font-size:12px;">
+                <thead><tr>
+                    <th style="text-align:left;padding:0 0 6px;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#888;border-bottom:2px solid #eee;">Product</th>
+                    <th style="text-align:center;padding:0 4px 6px;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#888;border-bottom:2px solid #eee;">Qty</th>
+                    <th style="text-align:right;padding:0 0 6px;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#888;border-bottom:2px solid #eee;">Total</th>
+                </tr></thead>
+                <tbody>${rows}</tbody>
+            </table>
+            <div class="totals">
+                ${delivery > 0 ? `<div class="totals-row"><span>Subtotal</span><span>${subtotal.toFixed(2)} JD</span></div><div class="totals-row"><span>Delivery</span><span>${delivery.toFixed(2)} JD</span></div>` : ''}
+                <div class="totals-row total"><span>Total</span><span>${Number(order.total_amount).toFixed(2)} JD</span></div>
+            </div>
+            ${order.notes ? `<div class="notes">📝 ${order.notes}</div>` : ''}
+        </div>`;
+    }).join('');
+
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>Packing Slips</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 13px; color: #111; background: #fff; }
+.slip { padding: 36px 40px; max-width: 680px; margin: 0 auto; page-break-after: always; }
+.slip:last-child { page-break-after: avoid; }
+.slip-header { display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 20px; border-bottom: 2px solid #111; margin-bottom: 20px; }
+.brand { font-size: 20px; font-weight: 700; }
+.brand span { font-weight: 300; color: #555; margin-left: 4px; }
+.sub { font-size: 11px; color: #888; letter-spacing: 1px; text-transform: uppercase; margin-top: 2px; }
+.order-no { font-size: 18px; font-weight: 300; font-family: monospace; }
+.meta { font-size: 11px; color: #888; margin-top: 2px; }
+.name { font-weight: 700; font-size: 14px; }
+.info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+.info-block { background: #f9f9f9; border-radius: 6px; padding: 12px 14px; }
+.section-title { font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; color: #888; font-weight: 600; margin-bottom: 8px; }
+.totals { margin-top: 12px; border-top: 2px solid #111; padding-top: 12px; }
+.totals-row { display: flex; justify-content: space-between; font-size: 12px; color: #555; padding: 3px 0; }
+.totals-row.total { font-size: 16px; font-weight: 700; color: #111; margin-top: 4px; padding-top: 4px; border-top: 1px solid #eee; }
+.notes { margin-top: 14px; padding: 10px 12px; background: #fffbf0; border: 1px solid #fde68a; border-radius: 6px; font-size: 12px; }
+.status-badge { display: inline-block; margin-top: 5px; font-size: 9px; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; padding: 2px 7px; border-radius: 3px; background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+.status-badge.cancelled { background: #fef2f2; color: #991b1b; border-color: #fecaca; }
+.status-badge.pending { background: #fffbeb; color: #92400e; border-color: #fde68a; }
+.status-badge.processing { background: #eff6ff; color: #1e40af; border-color: #bfdbfe; }
+@media print { body { background: #fff; } @page { margin: 8mm; } }
+</style>
+</head>
+<body>${slips}</body>
+</html>`;
+
+    const w = window.open('', '_blank', 'width=750,height=900');
+    if (!w) return;
+    w.document.write(html);
+    w.document.close();
+    w.focus();
+    setTimeout(() => w.print(), 400);
+}
 
 export default function OrdersIndex({ orders, filters }: Props) {
     const [updating, setUpdating] = useState<number | null>(null);
@@ -173,6 +294,14 @@ export default function OrdersIndex({ orders, filters }: Props) {
                     <button onClick={applyBulkDelete} disabled={bulking} className="btn" style={{ padding: '6px 14px', background: 'rgb(185,28,28)', borderColor: 'rgb(185,28,28)' }}>
                         Delete
                     </button>
+                    <button
+                        onClick={() => printSlips(orders.data.filter(o => selected.has(o.id)))}
+                        disabled={bulking}
+                        className="btn btn-ghost"
+                        style={{ padding: '6px 14px', display: 'flex', alignItems: 'center', gap: 5 }}
+                    >
+                        <Printer size={12} /> Print Slips
+                    </button>
                     <button onClick={() => setSelected(new Set())} className="btn btn-ghost" style={{ padding: '6px 14px' }}>
                         Clear
                     </button>
@@ -235,6 +364,14 @@ export default function OrdersIndex({ orders, filters }: Props) {
                                     </td>
                                     <td>
                                         <div className="tbl-actions">
+                                            <button
+                                                onClick={() => openWhatsApp(order)}
+                                                className="tbl-icon-btn"
+                                                title={`WhatsApp ${order.customer_name}`}
+                                                style={{ color: '#25D366' }}
+                                            >
+                                                <MessageCircle size={14} />
+                                            </button>
                                             <Link href={`/admin/orders/${order.id}`} className="tbl-icon-btn">
                                                 <ArrowRight size={14} />
                                             </Link>

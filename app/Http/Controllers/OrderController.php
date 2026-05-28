@@ -105,6 +105,8 @@ class OrderController extends Controller
             }
         }
 
+        $total += 3; // delivery fee
+
         $order = Order::create([
             'customer_name'    => $validated['customer_name'],
             'customer_phone'   => $validated['customer_phone'],

@@ -113,6 +113,8 @@ class OrderController extends Controller
             $total += (float) $itemData['unit_price'] * (int) $itemData['quantity'];
         }
 
+        $total += 3; // delivery fee
+
         $order->update(['total_amount' => round($total, 2)]);
 
         return back()->with('success', 'Order updated.');

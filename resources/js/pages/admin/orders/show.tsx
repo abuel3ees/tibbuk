@@ -7,6 +7,7 @@ interface ProductVariant { value: string; price: string }
 interface AvailableProduct {
     id: number; name: string; sku: string | null;
     price: string; sale_price: string | null; cost_price: string | null;
+    featured_image: string | null;
     variants: ProductVariant[] | null;
     allows_engraving: boolean; engraving_price: number | null;
     allows_stitching: boolean; stitching_price: number | null;
@@ -177,6 +178,7 @@ export default function OrderShow({ order, products }: Props) {
     const [copied, setCopied] = useState(false);
     const [editing, setEditing] = useState(false);
     const [saving, setSaving] = useState(false);
+    const [includeDelivery, setIncludeDelivery] = useState(true);
     const notesForm = useForm({ admin_notes: order.admin_notes ?? '' });
 
     /* ── Edit state ── */
@@ -242,6 +244,7 @@ export default function OrderShow({ order, products }: Props) {
         setSaving(true);
         router.put(`/admin/orders/${order.id}`, {
             ...editCustomer,
+            delivery_fee: includeDelivery ? 3 : 0,
             items: editItems.map(it => ({
                 id: it.id,
                 product_id: it.product_id,
@@ -288,7 +291,7 @@ export default function OrderShow({ order, products }: Props) {
     const totalCost = order.items.reduce((s, i) => s + (i.cost_price ? Number(i.cost_price) * i.quantity : 0), 0);
     const orderNo = String(order.id).padStart(5, '0');
 
-    const editTotal = editItems.reduce((s, i) => s + Number(i.unit_price) * i.quantity, 0);
+    const editTotal = editItems.reduce((s, i) => s + Number(i.unit_price) * i.quantity, 0) + (includeDelivery ? 3 : 0);
 
     const filteredProducts = productSearch
         ? products.filter(p => p.name.toLowerCase().includes(productSearch.toLowerCase()) || (p.sku ?? '').toLowerCase().includes(productSearch.toLowerCase()))
@@ -447,11 +450,16 @@ export default function OrderShow({ order, products }: Props) {
                                 {filteredProducts.map(p => (
                                     <div key={p.id}>
                                         <button
-                                            style={{ width: '100%', textAlign: 'left', padding: '8px 12px', background: 'none', border: 'none', cursor: 'pointer', borderBottom: '.5px solid var(--hair)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                                            style={{ width: '100%', textAlign: 'left', padding: '8px 12px', background: 'none', border: 'none', cursor: 'pointer', borderBottom: '.5px solid var(--hair)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}
                                             onClick={() => pickProduct(p)}
                                         >
-                                            <span style={{ fontFamily: 'var(--font-display)', fontSize: 13 }}>{p.name}</span>
-                                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--ink-mute)' }}>{Number(p.sale_price ?? p.price).toFixed(2)} JOD</span>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                                                <div style={{ width: 28, height: 28, borderRadius: 3, background: 'var(--bg-sunk)', flexShrink: 0, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                    {p.featured_image ? <img src={p.featured_image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <Package size={11} style={{ color: 'var(--ink-mute)' }} />}
+                                                </div>
+                                                <span style={{ fontFamily: 'var(--font-display)', fontSize: 13 }}>{p.name}</span>
+                                            </div>
+                                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--ink-mute)', flexShrink: 0 }}>{Number(p.sale_price ?? p.price).toFixed(2)} JOD</span>
                                         </button>
                                         {p.variants && p.variants.map(v => (
                                             <button key={v.value}
@@ -571,6 +579,17 @@ export default function OrderShow({ order, products }: Props) {
                                     })}
                                 </tbody>
                                 <tfoot>
+                                    <tr style={{ borderTop: '.5px solid var(--hair)' }}>
+                                        <td colSpan={4} style={{ textAlign: 'right', fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--ink-mute)' }}>Delivery fee</td>
+                                        <td style={{ textAlign: 'right' }}>
+                                            <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8, cursor: 'pointer' }}>
+                                                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: includeDelivery ? 'var(--ink)' : 'var(--ink-mute)' }}>
+                                                    {includeDelivery ? '3.00 JOD' : '—'}
+                                                </span>
+                                                <input type="checkbox" checked={includeDelivery} onChange={e => setIncludeDelivery(e.target.checked)} style={{ width: 14, height: 14, accentColor: 'var(--accent)', cursor: 'pointer' }} />
+                                            </label>
+                                        </td>
+                                    </tr>
                                     <tr style={{ borderTop: '.5px solid var(--rule)' }}>
                                         <td colSpan={4} style={{ textAlign: 'right', fontFamily: 'var(--font-mono)', fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--ink-mute)' }}>New Total</td>
                                         <td style={{ textAlign: 'right' }}>
@@ -591,12 +610,16 @@ export default function OrderShow({ order, products }: Props) {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {order.items.map(item => (
+                                    {order.items.map(item => {
+                                        const img = item.product ? products.find(p => p.id === item.product!.id)?.featured_image : null;
+                                        return (
                                         <tr key={item.id}>
                                             <td>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                                    <div style={{ width: 28, height: 28, borderRadius: 3, background: 'var(--bg-sunk)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                                                        <Package size={13} style={{ color: 'var(--ink-mute)' }} />
+                                                    <div style={{ width: 36, height: 36, borderRadius: 3, background: 'var(--bg-sunk)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
+                                                        {img
+                                                            ? <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                            : <Package size={13} style={{ color: 'var(--ink-mute)' }} />}
                                                     </div>
                                                     <div>
                                                         <span className="nm" style={{ fontSize: 15 }}>{item.product_name}</span>
@@ -617,7 +640,8 @@ export default function OrderShow({ order, products }: Props) {
                                                 <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--ink-mute)', marginLeft: 4 }}>JOD</span>
                                             </td>
                                         </tr>
-                                    ))}
+                                        );
+                                    })}
                                 </tbody>
                                 <tfoot>
                                     <tr style={{ borderTop: '.5px solid var(--rule)' }}>

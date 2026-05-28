@@ -50,7 +50,7 @@ class OrderController extends Controller
     {
         return Inertia::render('admin/orders/show', [
             'order'    => $order->load('items.product', 'statusLogs'),
-            'products' => Product::where('is_active', true)->orderBy('name')->get(['id', 'name', 'sku', 'price', 'sale_price', 'cost_price', 'variants', 'allows_engraving', 'engraving_price', 'allows_stitching', 'stitching_price', 'allows_sizes', 'available_sizes', 'allows_gender', 'allows_color', 'available_colors']),
+            'products' => Product::where('is_active', true)->orderBy('name')->get(['id', 'name', 'sku', 'price', 'sale_price', 'cost_price', 'featured_image', 'variants', 'allows_engraving', 'engraving_price', 'allows_stitching', 'stitching_price', 'allows_sizes', 'available_sizes', 'allows_gender', 'allows_color', 'available_colors']),
         ]);
     }
 
@@ -74,6 +74,7 @@ class OrderController extends Controller
             'items.*.selected_size'   => ['nullable', 'string', 'max:50'],
             'items.*.selected_gender' => ['nullable', 'string', 'max:10'],
             'items.*.selected_color'  => ['nullable', 'string', 'max:50'],
+            'delivery_fee'            => ['nullable', 'numeric', 'min:0'],
         ]);
 
         $order->update([
@@ -113,7 +114,7 @@ class OrderController extends Controller
             $total += (float) $itemData['unit_price'] * (int) $itemData['quantity'];
         }
 
-        $total += 3; // delivery fee
+        $total += (float) ($validated['delivery_fee'] ?? 3);
 
         $order->update(['total_amount' => round($total, 2)]);
 
